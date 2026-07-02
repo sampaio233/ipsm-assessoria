@@ -39,19 +39,118 @@
     });
   }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" onerror="reportLoadError('React')"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" onerror="reportLoadError('ReactDOM')"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" onerror="reportLoadError('Babel')"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.js" onerror="reportLoadError('Recharts (gráficos ficarão indisponíveis)')"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" onerror="reportLoadError('XLSX (exportação Excel ficará indisponível)')"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" onerror="reportLoadError('PDF.js (extração e busca em PDF ficarão indisponíveis)')"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="reportLoadError('Supabase (banco de dados indisponível)')"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.10.3/Recharts.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-  window.addEventListener('load', function () {
-    if (window.pdfjsLib) {
+/* ============================================================
+   CARREGADOR COM REDUNDÂNCIA DE CDN
+   Cada biblioteca acima tenta um CDN principal (cdnjs/jsDelivr).
+   Se falhar (rede instável, bloqueador de anúncios, firewall
+   corporativo bloqueando um provedor específico), este bloco
+   tenta automaticamente um CDN alternativo antes de desistir.
+   No pior caso, o comportamento é idêntico ao de antes (aviso
+   de recurso indisponível) — nunca fica pior do que estava.
+============================================================ */
+(function () {
+  // Se o Babel já carregou nesse ponto (caso comum), impede que ele rode o
+  // app sozinho assim que a página terminar de parsear — isso evita que ele
+  // tente executar o código antes do React/ReactDOM estarem prontos, caso
+  // algum deles precise do CDN reserva (mais lento). Nós mesmos disparamos
+  // a execução manualmente mais abaixo, só quando tudo estiver garantido.
+  if (window.Babel && typeof Babel.disableScriptTags === 'function') {
+    Babel.disableScriptTags();
+  }
+
+  function carregarScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error('Falha ao carregar ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  // Garante que "condicaoOk" fique verdadeira, tentando cada URL da lista
+  // de reserva em ordem até uma funcionar. Só reporta erro se TODAS falharem.
+  function garantir(condicaoOk, urlsReserva, nomeAmigavel) {
+    if (condicaoOk()) return Promise.resolve(true);
+    var restantes = urlsReserva.slice();
+    function tentarProxima() {
+      if (restantes.length === 0) {
+        reportLoadError(nomeAmigavel);
+        return false;
+      }
+      var url = restantes.shift();
+      return carregarScript(url)
+        .then(function () { return condicaoOk() ? true : tentarProxima(); })
+        .catch(tentarProxima);
+    }
+    return Promise.resolve(tentarProxima());
+  }
+
+  // 1) React → 2) ReactDOM → 3) Babel, nesta ordem (cada um depende do anterior).
+  garantir(function () { return typeof React !== 'undefined'; }, [
+    'https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js',
+    'https://unpkg.com/react@18.2.0/umd/react.production.min.js',
+  ], 'React')
+    .then(function () {
+      return garantir(function () { return typeof ReactDOM !== 'undefined'; }, [
+        'https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js',
+        'https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js',
+      ], 'ReactDOM');
+    })
+    .then(function () {
+      return garantir(function () { return typeof Babel !== 'undefined'; }, [
+        'https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js',
+        'https://unpkg.com/@babel/standalone@7.23.5/babel.min.js',
+      ], 'Babel');
+    })
+    .then(function (babelOk) {
+      // Chamado sempre que React + ReactDOM + Babel estão confirmadamente
+      // prontos (independentemente de qual CDN funcionou). Se o Babel já
+      // tivesse rodado o app sozinho, esta chamada é inofensiva (idempotente
+      // — o Babel ignora tags já processadas); se ainda não rodou (porque
+      // desabilitamos a execução automática lá em cima), é ela quem dispara
+      // o app pela primeira e única vez.
+      if (babelOk && window.Babel && typeof Babel.transformScriptTags === 'function') {
+        Babel.transformScriptTags();
+      }
+    })
+    .catch(function (e) { console.error(e); });
+
+  // Bibliotecas de apoio — o sistema continua funcionando sem elas,
+  // só com a funcionalidade específica indisponível.
+  garantir(function () { return typeof Recharts !== 'undefined'; }, [
+    'https://cdn.jsdelivr.net/npm/recharts@2.10.3/umd/Recharts.js',
+  ], 'Recharts (gráficos ficarão indisponíveis)').then(function (ok) {
+    if (ok) { window.__RECHARTS_PRONTO__ = true; window.dispatchEvent(new Event('recharts-pronto')); }
+  });
+
+  garantir(function () { return typeof XLSX !== 'undefined'; }, [
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
+  ], 'XLSX (exportação Excel ficará indisponível)');
+
+  garantir(function () { return typeof pdfjsLib !== 'undefined'; }, [
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+    'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
+  ], 'PDF.js (extração e busca em PDF ficarão indisponíveis)').then(function (ok) {
+    if (ok && window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
   });
+
+  garantir(function () { return typeof window.supabase !== 'undefined'; }, [
+    'https://unpkg.com/@supabase/supabase-js@2',
+  ], 'Supabase (banco de dados indisponível)');
+})();
 </script>
 
 <style>
@@ -543,6 +642,22 @@ function partesComDestaque(texto, termos) {
 
 const AppContext = createContext(null);
 function useApp() { return useContext(AppContext); }
+
+// Detecta de forma reativa quando a biblioteca de gráficos (Recharts) fica
+// disponível — inclusive se o carregamento inicial demorou ou precisou do
+// CDN de reserva. Sem isso, uma tela que já tinha renderizado "gráficos
+// indisponíveis" nunca voltaria a mostrar os gráficos sozinha.
+function useRechartsPronto() {
+  const [pronto, setPronto] = useState(() => typeof Recharts !== "undefined");
+  useEffect(() => {
+    if (pronto) return;
+    function onPronto() { setPronto(true); }
+    window.addEventListener("recharts-pronto", onPronto);
+    if (typeof Recharts !== "undefined") { setPronto(true); return; }
+    return () => window.removeEventListener("recharts-pronto", onPronto);
+  }, [pronto]);
+  return pronto;
+}
 
 /* ============================================================
    ÍCONES — conjunto SVG inline (sem dependência externa)
@@ -1144,7 +1259,7 @@ function TelaAutenticacao() {
 
 function Dashboard({ setActive }) {
   const { demandas, documentos } = useApp();
-  const rechartsDisponivel = typeof Recharts !== "undefined";
+  const rechartsDisponivel = useRechartsPronto();
   const { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } = rechartsDisponivel ? Recharts : {};
 
   const demandasHoje = useMemo(() => demandas.filter(d => ehHoje(d.data_criacao)), [demandas]);
@@ -1639,24 +1754,40 @@ const OPERACOES_ASSISTENTE = [
   },
 ];
 
+// Só entram na lista as IAs que realmente aceitam receber o texto pronto
+// por link. Gemini nunca teve esse recurso; a Anthropic removeu do Claude.ai
+// em out/2025 por segurança; o Copilot quebrou esse recurso e não voltou —
+// nelas a aba abriria em branco, o que não tem utilidade real aqui.
+const DESTINOS_IA = [
+  { id: "chatgpt", label: "ChatGPT", url: "https://chat.openai.com", prefill: (t) => "https://chatgpt.com/?q=" + encodeURIComponent(t) },
+  { id: "perplexity", label: "Perplexity", url: "https://www.perplexity.ai", prefill: (t) => "https://www.perplexity.ai/search?q=" + encodeURIComponent(t) },
+];
+
 function AssistenteRedacao() {
   const { documentos } = useApp();
   const toast = useToast();
   const [textoOriginal, setTextoOriginal] = useState("");
   const [operacao, setOperacao] = useState(OPERACOES_ASSISTENTE[0].id);
+  const [destinoId, setDestinoId] = useState(DESTINOS_IA[0].id);
   const [buscouDUT, setBuscouDUT] = useState(false);
 
-  function usarChatGPT() {
+  function abrirNaIA() {
     if (!textoOriginal.trim()) { toast("Cole o texto que deseja trabalhar.", "error"); return; }
     const op = OPERACOES_ASSISTENTE.find((o) => o.id === operacao);
+    const destino = DESTINOS_IA.find((d) => d.id === destinoId);
     const instrucaoCompleta = `${op.instrucao}\n\nTexto original:\n"""\n${textoOriginal}\n"""`;
-    if (instrucaoCompleta.length > 1800) {
-      // Texto longo demais para ir pré-preenchido na URL — abre o ChatGPT em branco.
-      toast("Texto muito longo para preencher automaticamente. O ChatGPT abrirá em branco — copie e cole o texto lá.", "info");
-      window.open("https://chat.openai.com", "_blank");
+
+    if (!destino.prefill) {
+      toast(`${destino.label} não aceita receber o texto pronto por link — a aba abrirá em branco, cole o texto lá.`, "info");
+      window.open(destino.url, "_blank");
       return;
     }
-    window.open("https://chatgpt.com/?q=" + encodeURIComponent(instrucaoCompleta), "_blank");
+    if (instrucaoCompleta.length > 1800) {
+      toast("Texto muito longo para preencher automaticamente. A aba abrirá em branco — copie e cole o texto lá.", "info");
+      window.open(destino.url, "_blank");
+      return;
+    }
+    window.open(destino.prefill(instrucaoCompleta), "_blank");
   }
 
   const documentosDUT = useMemo(() => documentos.filter((d) => d.tipo === "DUT (ANS)"), [documentos]);
@@ -1681,7 +1812,7 @@ function AssistenteRedacao() {
       <SectionTitle
         eyebrow="Redação institucional"
         title="Assistente de Redação"
-        subtitle="Cole o texto, escolha a operação desejada e abra no ChatGPT já com a instrução preenchida — ou consulte as DUTs cadastradas."
+        subtitle="Cole o texto, escolha a operação e a IA de preferência — ou consulte as DUTs cadastradas."
       />
 
       <Card style={{ marginBottom: 18 }}>
@@ -1709,8 +1840,26 @@ function AssistenteRedacao() {
           ))}
         </div>
 
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 10 }}>Abrir em</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+          {DESTINOS_IA.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => setDestinoId(d.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 999,
+                border: "1px solid " + (destinoId === d.id ? "var(--steel)" : "var(--line)"),
+                background: destinoId === d.id ? "var(--steel-pale)" : "var(--paper)",
+                fontSize: 13, fontWeight: 600, color: destinoId === d.id ? "var(--steel)" : "var(--ink)",
+              }}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button variant="accent" icon="external-link" onClick={usarChatGPT}>Usar ChatGPT</Button>
+          <Button variant="accent" icon="external-link" onClick={abrirNaIA}>Usar {DESTINOS_IA.find((d) => d.id === destinoId).label}</Button>
         </div>
 
         <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--line-soft)" }}>
@@ -2574,7 +2723,7 @@ function AtestadosFuncionarios() {
   const [periodoFim, setPeriodoFim] = useState("");
   const [confirmExcluir, setConfirmExcluir] = useState(null);
 
-  const rechartsDisponivel = typeof Recharts !== "undefined";
+  const rechartsDisponivel = useRechartsPronto();
   const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } = rechartsDisponivel ? Recharts : {};
 
   const filtrados = useMemo(() => {
@@ -2751,7 +2900,7 @@ function EquipeProdutividade() {
   const [confirmRemover, setConfirmRemover] = useState(null);
   const [enviandoReset, setEnviandoReset] = useState(null);
 
-  const rechartsDisponivel = typeof Recharts !== "undefined";
+  const rechartsDisponivel = useRechartsPronto();
   const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } = rechartsDisponivel ? Recharts : {};
 
   const estatisticasPorUsuario = useMemo(() => {
