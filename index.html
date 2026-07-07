@@ -318,6 +318,16 @@ const FUSO_BR = "America/Sao_Paulo";
 
 function formatarData(iso) {
   if (!iso) return "—";
+  // Datas "puras" (só ano-mês-dia, sem hora) NÃO podem passar por conversão
+  // de fuso horário: o JavaScript as interpreta como meia-noite em UTC, e
+  // convertê-las para o horário de Brasília (3h atrás) "volta" um dia
+  // (ex.: 06/07 vira 05/07). Aqui, montamos a data diretamente dos números,
+  // sem envolver fuso horário nenhum.
+  const somenteData = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  if (somenteData) {
+    const [ano, mes, dia] = iso.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("pt-BR", { timeZone: FUSO_BR });
