@@ -623,7 +623,9 @@ function normalizarBusca(texto) {
 
 // Busca por palavras-chave dentro do texto indexado dos documentos,
 // ignorando maiúsculas/minúsculas e acentos, aceitando múltiplos termos,
-// e ordenando por relevância (quantidade de ocorrências).
+// e ordenando por relevância (quantidade de ocorrências). Exige palavra
+// inteira (com \b) para não achar, por exemplo, "pet" dentro de
+// "competitiva" — só conta quando "pet" aparece como palavra isolada.
 function buscarNoConteudoDocumentos(documentos, consulta) {
   const termos = normalizarBusca(consulta).split(/\s+/).filter(Boolean);
   if (termos.length === 0) return [];
@@ -634,13 +636,13 @@ function buscarNoConteudoDocumentos(documentos, consulta) {
     let ocorrencias = 0;
     let primeiraPos = -1;
     termos.forEach((t) => {
-      let pos = 0;
-      while (true) {
-        const idx = textoNormalizado.indexOf(t, pos);
-        if (idx === -1) break;
+      const escapado = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`\\b${escapado}\\b`, "g");
+      let m;
+      while ((m = regex.exec(textoNormalizado)) !== null) {
         ocorrencias++;
-        if (primeiraPos === -1) primeiraPos = idx;
-        pos = idx + t.length;
+        if (primeiraPos === -1) primeiraPos = m.index;
+        if (regex.lastIndex === m.index) regex.lastIndex++;
       }
     });
     if (ocorrencias > 0) {
@@ -654,12 +656,13 @@ function buscarNoConteudoDocumentos(documentos, consulta) {
   return resultados;
 }
 
-// Divide um trecho de texto em partes, destacando os termos buscados.
+// Divide um trecho de texto em partes, destacando os termos buscados
+// (também só como palavra inteira, pelo mesmo motivo acima).
 function partesComDestaque(texto, termos) {
   if (!termos || termos.length === 0) return [texto];
   const escapados = termos.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).filter(Boolean);
   if (escapados.length === 0) return [texto];
-  const regex = new RegExp(`(${escapados.join("|")})`, "gi");
+  const regex = new RegExp(`\\b(${escapados.join("|")})\\b`, "gi");
   return texto.split(regex);
 }
 
