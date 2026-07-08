@@ -717,6 +717,8 @@ const ICON_PATHS = {
   "clock": '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   "copy": '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   "archive": '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/>',
+  "database-backup": '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 15 21.84"/><path d="M21 5V8"/><path d="M3 12A9 3 0 0 0 14.59 14.87"/><path d="M21 12v2"/><path d="M18 21.5c2 0 3-1 3-2.5 0-1-1-1.5-2-1.5 1 0 2-.5 2-1.5 0-1.5-1-2.5-3-2.5"/>',
+  "download": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
   "book-open": '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
   "eye": '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/>',
   "eye-off": '<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 0 1-4.24-4.24"/><path d="M6.61 6.61A18.5 18.5 0 0 0 1 13s4 8 11 8a10.44 10.44 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/>',
@@ -2502,6 +2504,36 @@ function exportarCSV(dados, nomeArquivo) {
   URL.revokeObjectURL(url);
 }
 
+function exportarBackupCompleto(tabelas) {
+  if (typeof XLSX === "undefined") return false;
+  try {
+    const wb = XLSX.utils.book_new();
+    Object.entries(tabelas).forEach(([nome, linhas]) => {
+      // Nome de aba no Excel tem limite de 31 caracteres e não aceita alguns símbolos
+      const nomeAba = nome.replace(/[\\/?*[\]:]/g, "").slice(0, 31) || "Dados";
+      const dadosLimpos = (linhas || []).map(l => {
+        const obj = {};
+        Object.entries(l).forEach(([k, v]) => {
+          if (v === null || v === undefined) { obj[k] = ""; return; }
+          if (typeof v === "object") { obj[k] = JSON.stringify(v); return; }
+          obj[k] = v;
+        });
+        return obj;
+      });
+      const ws = dadosLimpos.length > 0
+        ? XLSX.utils.json_to_sheet(dadosLimpos)
+        : XLSX.utils.aoa_to_sheet([["(sem registros)"]]);
+      XLSX.utils.book_append_sheet(wb, ws, nomeAba);
+    });
+    const dataHora = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+    XLSX.writeFile(wb, `backup-assessoria-ipsm-${dataHora}.xlsx`);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+
 function exportarExcel(dados, nomeArquivo) {
   if (typeof XLSX === "undefined") return false;
   const colunas = [
@@ -4221,10 +4253,14 @@ function AtestadosFuncionarios() {
 ============================================================ */
 
 function EquipeProdutividade() {
-  const { usuarios, trocarRolePerfil, alternarAtivoPerfil, excluirPerfil, demandas, usuarioAtual } = useApp();
+  const {
+    usuarios, trocarRolePerfil, alternarAtivoPerfil, excluirPerfil, demandas, usuarioAtual,
+    documentos, atestados, escalas, escalaMedica, reunioes, produtividadeMedica, medicos, caixaEntradaMedica,
+  } = useApp();
   const toast = useToast();
   const [confirmRemover, setConfirmRemover] = useState(null);
   const [enviandoReset, setEnviandoReset] = useState(null);
+  const [gerandoBackup, setGerandoBackup] = useState(false);
 
   const rechartsDisponivel = useRechartsPronto();
   const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } = rechartsDisponivel ? Recharts : {};
@@ -4239,6 +4275,31 @@ function EquipeProdutividade() {
       return { usuario: u, total: minhasDemandas.length, concluidas, emAndamento, urgentes, hoje };
     }).sort((a, b) => b.total - a.total);
   }, [usuarios, demandas]);
+
+  function gerarBackup() {
+    setGerandoBackup(true);
+    try {
+      const ok = exportarBackupCompleto({
+        Demandas: demandas,
+        Documentos: documentos.map(d => ({ ...d, conteudo_texto: d.conteudo_texto ? d.conteudo_texto.slice(0, 500) + "…" : "" })),
+        Atestados: atestados,
+        "Escala de Setores": escalas,
+        "Escala Médica": escalaMedica,
+        Reuniões: reunioes,
+        "Produtividade Médica": produtividadeMedica,
+        Médicos: medicos,
+        "Caixa de Entrada": caixaEntradaMedica,
+        Equipe: usuarios.map(u => ({ nome: u.nome, sobrenome: u.sobrenome, setor: u.setor, role: u.role, ativo: u.ativo })),
+      });
+      if (ok) {
+        toast("Backup gerado! O arquivo Excel foi baixado para o seu computador.", "success");
+      } else {
+        toast("Não foi possível gerar o backup — verifique se a biblioteca de planilhas carregou (recarregue a página).", "error");
+      }
+    } finally {
+      setGerandoBackup(false);
+    }
+  }
 
   const demandasPorDia = useMemo(() => {
     const map = {};
@@ -4295,6 +4356,24 @@ function EquipeProdutividade() {
         title="Equipe & Produtividade"
         subtitle="Acompanhe quantas demandas cada colaborador tratou e gerencie acessos da equipe."
       />
+
+      <Card style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--steel-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Icon name="database-backup" size={19} color="var(--steel)" />
+          </div>
+          <div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--heading)" }}>Backup completo do sistema</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>Baixa uma planilha Excel com uma aba para cada módulo (demandas, atestados, escalas, produtividade médica, etc.).</div>
+          </div>
+        </div>
+        <Button variant="accent" icon="download" disabled={gerandoBackup} onClick={gerarBackup}>
+          {gerandoBackup ? <Spinner size={14} color="#fff" /> : "Gerar backup agora"}
+        </Button>
+      </Card>
+      <p style={{ fontSize: 11.5, color: "var(--ink-soft)", marginTop: -12, marginBottom: 20 }}>
+        Este backup baixa os dados cadastrados (texto e números). Os arquivos PDF anexados (atestados, documentos) continuam guardados no Supabase Storage e não vêm dentro desta planilha — se precisar deles também, baixe-os separadamente pelo painel do Supabase.
+      </p>
 
       {rechartsDisponivel && demandasPorDia.length > 0 && (
         <Card style={{ marginBottom: 20 }}>
