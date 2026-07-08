@@ -739,6 +739,8 @@ const ICON_PATHS = {
   "pencil": '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
   "plus": '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
   "stethoscope": '<path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
+  "cake": '<path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2 1 3.5 1 2-1 3.5-1 2 1 3.5 1 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/><path d="M12 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/><path d="M17 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/>',
+  "id-card": '<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M2 16c0-1.5 1.5-3 4-3s4 1.5 4 3"/><line x1="14" y1="8" x2="18" y2="8"/><line x1="14" y1="12" x2="18" y2="12"/>',
   "trash-2": '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
   "layout-dashboard": '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
   "flask-conical": '<path d="M10 2v6.5L5.5 17a2 2 0 0 0 1.7 3h9.6a2 2 0 0 0 1.7-3L14 8.5V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
@@ -1612,6 +1614,7 @@ function Dashboard({ setActive }) {
                   <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Médico</th>
                   <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Atribuídos</th>
                   <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Feitos</th>
+                  <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Pendentes</th>
                   <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Taxa</th>
                 </tr>
               </thead>
@@ -1621,6 +1624,7 @@ function Dashboard({ setActive }) {
                     <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--ink)" }}>{m.nome}</td>
                     <td style={{ padding: "8px 12px", color: "var(--ink-soft)" }}>{m.atribuidos}</td>
                     <td style={{ padding: "8px 12px", color: "var(--ink-soft)" }}>{m.feitos}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--amber)" }}>{m.atribuidos - m.feitos}</td>
                     <td style={{ padding: "8px 12px", color: "var(--ink-soft)" }}>{m.atribuidos > 0 ? Math.round((m.feitos / m.atribuidos) * 100) : 0}%</td>
                   </tr>
                 ))}
@@ -2907,16 +2911,16 @@ function EscalaSetores() {
    Qualquer usuário autenticado pode cadastrar/editar.
 ============================================================ */
 
-function FormularioEscalaMedica({ item, onSalvar, onCancelar }) {
+function FormularioEscalaMedica({ item, onSalvar, onCancelar, medicos, onPedirNovoMedico }) {
   const toast = useToast();
   const [form, setForm] = useState(item || {
-    nome_medico: "", especialidade: "", dia_semana: DIAS_SEMANA[0],
+    nome_medico: medicos[0] ? medicos[0].nome : "", especialidade: "", dia_semana: DIAS_SEMANA[0],
     horario_inicio: "08:00", horario_fim: "12:00", telefone: "", observacoes: "",
   });
   const [salvando, setSalvando] = useState(false);
 
   function validar() {
-    if (!form.nome_medico.trim()) { toast("Informe o nome do médico.", "error"); return false; }
+    if (!form.nome_medico.trim()) { toast("Selecione o médico.", "error"); return false; }
     return true;
   }
 
@@ -2934,10 +2938,21 @@ function FormularioEscalaMedica({ item, onSalvar, onCancelar }) {
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Nome do médico" required><Input value={form.nome_medico} onChange={(e) => setForm({ ...form, nome_medico: e.target.value })} /></Field>
-        <Field label="Especialidade"><Input value={form.especialidade} onChange={(e) => setForm({ ...form, especialidade: e.target.value })} /></Field>
-      </div>
+      <Field label="Médico" required hint={medicos.length === 0 ? "Nenhum médico cadastrado ainda." : "CRM, nome completo, CPF e aniversário ficam no cadastro do médico, não aqui."}>
+        {medicos.length === 0 ? (
+          <Button variant="secondary" icon="plus" onClick={onPedirNovoMedico}>Cadastrar médico primeiro</Button>
+        ) : (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Select value={form.nome_medico} onChange={(e) => setForm({ ...form, nome_medico: e.target.value })} style={{ flex: 1 }}>
+              {medicos.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
+            </Select>
+            <Button variant="secondary" icon="plus" onClick={onPedirNovoMedico} title="Cadastrar novo médico" />
+          </div>
+        )}
+      </Field>
+      <Field label="Especialidade / observação do dia" hint='Ex: "Cirurgia Vascular" ou "Folga".'>
+        <Input value={form.especialidade} onChange={(e) => setForm({ ...form, especialidade: e.target.value })} />
+      </Field>
       <Field label="Dia da semana" required>
         <Select value={form.dia_semana} onChange={(e) => setForm({ ...form, dia_semana: e.target.value })}>
           {DIAS_SEMANA.map(d => <option key={d} value={d}>{d}</option>)}
@@ -2947,23 +2962,30 @@ function FormularioEscalaMedica({ item, onSalvar, onCancelar }) {
         <Field label="Horário de início"><Input type="time" value={form.horario_inicio} onChange={(e) => setForm({ ...form, horario_inicio: e.target.value })} /></Field>
         <Field label="Horário de fim"><Input type="time" value={form.horario_fim} onChange={(e) => setForm({ ...form, horario_fim: e.target.value })} /></Field>
       </div>
-      <Field label="Telefone"><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(31) 90000-0000" /></Field>
-      <Field label="Observações"><Textarea rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></Field>
+      <Field label="Telefone (deste plantão/horário)"><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(31) 90000-0000" /></Field>
+      <Field label="Observações"><Textarea rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} placeholder="Só o que for específico deste dia/horário." /></Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
         <Button variant="secondary" onClick={onCancelar}>Cancelar</Button>
-        <Button variant="accent" icon="check" disabled={salvando} onClick={salvar}>{salvando ? <Spinner size={14} color="#fff" /> : "Salvar"}</Button>
+        <Button variant="accent" icon="check" disabled={salvando || medicos.length === 0} onClick={salvar}>{salvando ? <Spinner size={14} color="#fff" /> : "Salvar"}</Button>
       </div>
     </div>
   );
 }
 
 function EscalaMedica() {
-  const { escalaMedica, criarEscalaMedica, atualizarEscalaMedica, excluirEscalaMedica } = useApp();
+  const { escalaMedica, criarEscalaMedica, atualizarEscalaMedica, excluirEscalaMedica, medicos, criarMedico } = useApp();
   const toast = useToast();
   const [modalAberto, setModalAberto] = useState(false);
   const [editando, setEditando] = useState(null);
+  const [modalNovoMedico, setModalNovoMedico] = useState(false);
   const [confirmExcluir, setConfirmExcluir] = useState(null);
   const [busca, setBusca] = useState("");
+
+  const medicoPorNome = useMemo(() => {
+    const map = {};
+    medicos.forEach(m => { map[m.nome] = m; });
+    return map;
+  }, [medicos]);
 
   const porDia = useMemo(() => {
     const map = {};
@@ -3000,6 +3022,12 @@ function EscalaMedica() {
     setConfirmExcluir(null);
   }
 
+  async function salvarNovoMedico(form) {
+    await criarMedico(form);
+    toast("Médico cadastrado.", "success");
+    setModalNovoMedico(false);
+  }
+
   const diaAtual = DIAS_SEMANA[(new Date().getDay() + 6) % 7];
 
   return (
@@ -3021,42 +3049,81 @@ function EscalaMedica() {
       {escalaMedica.length === 0 ? (
         <Card><EmptyState icon="stethoscope" title="Nenhum médico cadastrado na escala" subtitle="Cadastre o primeiro horário médico da semana." action={<Button icon="plus" variant="accent" onClick={() => setModalAberto(true)}>Cadastrar horário</Button>} /></Card>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 14 }}>
           {DIAS_SEMANA.map((dia) => (
             <Card key={dia} style={dia === diaAtual ? { border: "1px solid var(--steel)" } : {}}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                 <h3 style={{ fontFamily: "var(--font-display)", fontSize: 15, color: "var(--heading)", margin: 0 }}>{dia}</h3>
                 {dia === diaAtual && <Badge bg="var(--steel-pale)" fg="var(--steel)">Hoje</Badge>}
               </div>
               {(porDia[dia] || []).length === 0 ? (
                 <p style={{ fontSize: 12.5, color: "var(--ink-soft)", margin: 0 }}>Nenhum médico neste dia.</p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {porDia[dia].map((e, i) => (
-                    <div key={e.id} style={{ borderTop: i > 0 ? "1px solid var(--line-soft)" : "none", paddingTop: i > 0 ? 10 : 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
-                        <div>
-                          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>{e.nome_medico}</div>
-                          {e.especialidade && <div style={{ fontSize: 12, color: "var(--ink-soft)" }}>{e.especialidade}</div>}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {porDia[dia].map((e, i) => {
+                    const medico = medicoPorNome[e.nome_medico];
+                    const ehFolga = (e.especialidade || "").toLowerCase().includes("folga") || (e.observacoes || "").toLowerCase().includes("day off");
+                    return (
+                      <div key={e.id} style={{ borderTop: i > 0 ? "1px solid var(--line-soft)" : "none", paddingTop: i > 0 ? 14 : 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{e.nome_medico}</div>
+                          <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                            <Button size="sm" variant="ghost" icon="pencil" onClick={() => { setEditando(e); setModalAberto(true); }} />
+                            <Button size="sm" variant="ghost" icon="trash-2" onClick={() => setConfirmExcluir(e)} style={{ color: "var(--terracotta)" }} />
+                          </div>
                         </div>
-                        <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
-                          <Button size="sm" variant="ghost" icon="pencil" onClick={() => { setEditando(e); setModalAberto(true); }} />
-                          <Button size="sm" variant="ghost" icon="trash-2" onClick={() => setConfirmExcluir(e)} style={{ color: "var(--terracotta)" }} />
-                        </div>
+
+                        {ehFolga ? (
+                          <Badge bg="rgba(148,160,172,0.16)" fg="#9AA6B2">Folga</Badge>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                            {e.especialidade && (
+                              <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{e.especialidade}</div>
+                            )}
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--ink)" }}>
+                              <Icon name="clock" size={13} color="var(--ink-soft)" />
+                              {e.horario_inicio || "—"}{e.horario_fim ? ` – ${e.horario_fim}` : ""}
+                            </div>
+                            {e.telefone && (
+                              <a href={"tel:" + e.telefone.replace(/\D/g, "")} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--steel)", textDecoration: "none" }}>
+                                <Icon name="phone" size={13} color="var(--steel)" />
+                                {e.telefone}
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {e.observacoes && !ehFolga && (
+                          <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginTop: 6, fontStyle: "italic" }}>{e.observacoes}</div>
+                        )}
+
+                        {medico && (medico.crm || medico.aniversario || medico.nome_completo || medico.cpf) && (
+                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed var(--line-soft)", display: "flex", flexDirection: "column", gap: 3 }}>
+                            {medico.nome_completo && (
+                              <div style={{ fontSize: 11, color: "var(--ink-soft)" }}>{medico.nome_completo}</div>
+                            )}
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                              {medico.crm && (
+                                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--ink-soft)" }}>
+                                  <Icon name="id-card" size={12} color="var(--ink-soft)" />
+                                  CRM {medico.crm}
+                                </span>
+                              )}
+                              {medico.aniversario && (
+                                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--ink-soft)" }}>
+                                  <Icon name="cake" size={12} color="var(--ink-soft)" />
+                                  {medico.aniversario}
+                                </span>
+                              )}
+                            </div>
+                            {medico.cpf && (
+                              <div style={{ fontSize: 10.5, color: "var(--ink-soft)", opacity: 0.75 }}>CPF {medico.cpf}</div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 12.5, color: "var(--ink)" }}>
-                        <Icon name="clock" size={13} color="var(--ink-soft)" />
-                        {e.horario_inicio || "—"}{e.horario_fim ? ` – ${e.horario_fim}` : ""}
-                      </div>
-                      {e.telefone && (
-                        <a href={"tel:" + e.telefone.replace(/\D/g, "")} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 12.5, color: "var(--steel)", textDecoration: "none" }}>
-                          <Icon name="phone" size={13} color="var(--steel)" />
-                          {e.telefone}
-                        </a>
-                      )}
-                      {e.observacoes && <div style={{ fontSize: 11.5, color: "var(--ink-soft)", marginTop: 4 }}>{e.observacoes}</div>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </Card>
@@ -3065,7 +3132,17 @@ function EscalaMedica() {
       )}
 
       <Modal open={modalAberto} onClose={() => { setModalAberto(false); setEditando(null); }} title={editando ? "Editar horário" : "Novo horário médico"} width={560}>
-        <FormularioEscalaMedica item={editando} onSalvar={salvar} onCancelar={() => { setModalAberto(false); setEditando(null); }} />
+        <FormularioEscalaMedica
+          item={editando}
+          medicos={medicos}
+          onSalvar={salvar}
+          onCancelar={() => { setModalAberto(false); setEditando(null); }}
+          onPedirNovoMedico={() => setModalNovoMedico(true)}
+        />
+      </Modal>
+
+      <Modal open={modalNovoMedico} onClose={() => setModalNovoMedico(false)} title="Novo médico" width={480}>
+        <FormularioMedico onSalvar={salvarNovoMedico} onCancelar={() => setModalNovoMedico(false)} />
       </Modal>
 
       <Modal open={!!confirmExcluir} onClose={() => setConfirmExcluir(null)} title="Remover da escala" width={420}>
@@ -3423,16 +3500,16 @@ function Reunioes() {
    Qualquer usuário pode cadastrar, editar e excluir.
 ============================================================ */
 
-function FormularioMedico({ onSalvar, onCancelar }) {
+function FormularioMedico({ item, onSalvar, onCancelar }) {
   const toast = useToast();
-  const [nome, setNome] = useState("");
+  const [form, setForm] = useState(item || { nome: "", nome_completo: "", crm: "", cpf: "", aniversario: "" });
   const [salvando, setSalvando] = useState(false);
 
   async function salvar() {
-    if (!nome.trim()) { toast("Informe o nome do médico.", "error"); return; }
+    if (!form.nome.trim()) { toast("Informe o nome do médico (como deve aparecer na agenda).", "error"); return; }
     setSalvando(true);
     try {
-      await onSalvar({ nome: nome.trim() });
+      await onSalvar({ ...form, nome: form.nome.trim() });
     } catch (err) {
       toast("Não foi possível salvar: " + err.message, "error");
     } finally {
@@ -3442,9 +3519,17 @@ function FormularioMedico({ onSalvar, onCancelar }) {
 
   return (
     <div>
-      <Field label="Nome do médico" required>
-        <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome completo" autoFocus />
+      <Field label="Nome (como aparece na agenda)" required hint='Ex: "Dra. Júlia" — nome curto usado nos cartões da escala.'>
+        <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Dra. Júlia" autoFocus />
       </Field>
+      <Field label="Nome completo" hint="Opcional.">
+        <Input value={form.nome_completo} onChange={(e) => setForm({ ...form, nome_completo: e.target.value })} placeholder="Ex: Júlia Tereza Silva Martins" />
+      </Field>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="CRM" hint="Opcional."><Input value={form.crm} onChange={(e) => setForm({ ...form, crm: e.target.value })} placeholder="Ex: 67995/MG" /></Field>
+        <Field label="Aniversário" hint="Dia e mês, opcional."><Input value={form.aniversario} onChange={(e) => setForm({ ...form, aniversario: e.target.value })} placeholder="Ex: 20/05" /></Field>
+      </div>
+      <Field label="CPF" hint="Opcional."><Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" /></Field>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
         <Button variant="secondary" onClick={onCancelar}>Cancelar</Button>
         <Button variant="accent" icon="check" disabled={salvando} onClick={salvar}>{salvando ? <Spinner size={14} color="#fff" /> : "Salvar"}</Button>
@@ -3529,7 +3614,7 @@ function FormularioProdutividadeMedica({ item, onSalvar, onCancelar, medicos, on
       </Field>
       <Field label="Data" required><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Atribuídos no dia" hint="Quantos processos entraram para ele">
+        <Field label="Atribuídos no dia" hint="Só os processos NOVOS que entraram neste dia — o sistema calcula o pendente sozinho, não precisa somar na mão.">
           <Input type="number" min="0" value={form.atribuidos} onChange={(e) => setForm({ ...form, atribuidos: e.target.value })} placeholder="0" />
         </Field>
         <Field label="Feitos no dia" hint="Quantos ele concluiu">
@@ -3548,7 +3633,7 @@ function FormularioProdutividadeMedica({ item, onSalvar, onCancelar, medicos, on
 function ProdutividadeMedica() {
   const {
     produtividadeMedica, criarProdutividadeMedica, atualizarProdutividadeMedica, excluirProdutividadeMedica,
-    medicos, criarMedico, excluirMedico,
+    medicos, criarMedico, atualizarMedico, excluirMedico,
     caixaEntradaMedica, criarCaixaEntrada, atualizarCaixaEntrada, excluirCaixaEntrada,
   } = useApp();
   const toast = useToast();
@@ -3556,6 +3641,7 @@ function ProdutividadeMedica() {
   const [modalRegistro, setModalRegistro] = useState(false);
   const [editandoRegistro, setEditandoRegistro] = useState(null);
   const [modalMedico, setModalMedico] = useState(false);
+  const [editandoMedico, setEditandoMedico] = useState(null);
   const [modalCaixa, setModalCaixa] = useState(false);
   const [editandoCaixa, setEditandoCaixa] = useState(null);
   const [confirmExcluir, setConfirmExcluir] = useState(null); // { tipo: 'registro'|'medico'|'caixa', item }
@@ -3653,9 +3739,15 @@ function ProdutividadeMedica() {
   }
 
   async function salvarMedico(form) {
-    await criarMedico(form);
-    toast("Médico cadastrado.", "success");
+    if (editandoMedico) {
+      await atualizarMedico(editandoMedico.id, form);
+      toast("Médico atualizado.", "success");
+    } else {
+      await criarMedico(form);
+      toast("Médico cadastrado.", "success");
+    }
     setModalMedico(false);
+    setEditandoMedico(null);
   }
 
   async function salvarCaixa(form) {
@@ -3694,7 +3786,7 @@ function ProdutividadeMedica() {
         action={<Button icon="plus" variant="accent" onClick={() => { setEditandoRegistro(null); setModalRegistro(true); }}>Novo registro</Button>}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, marginBottom: 20 }}>
         <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--steel-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="inbox" size={17} color="var(--steel)" /></div>
           <div><div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Atribuídos</div><div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totais.atribuidos}</div></div>
@@ -3702,6 +3794,14 @@ function ProdutividadeMedica() {
         <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--teal-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="check-circle-2" size={17} color="var(--teal)" /></div>
           <div><div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Feitos</div><div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totais.feitos}</div></div>
+        </Card>
+        <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--amber-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="clock" size={17} color="var(--amber)" /></div>
+          <div>
+            <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Pendentes</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totais.atribuidos - totais.feitos}</div>
+            <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>calculado automaticamente</div>
+          </div>
         </Card>
         <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--amber-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="package" size={17} color="var(--amber)" /></div>
@@ -3728,9 +3828,12 @@ function ProdutividadeMedica() {
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {medicos.map(m => (
-                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--pearl)" }}>
+                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 6px 6px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--pearl)" }}>
                   <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>{m.nome}</span>
-                  <button onClick={() => setConfirmExcluir({ tipo: "medico", item: m })} style={{ background: "transparent", border: "none", display: "flex", cursor: "pointer" }} title="Remover médico">
+                  <button onClick={() => { setEditandoMedico(m); setModalMedico(true); }} style={{ background: "transparent", border: "none", display: "flex", cursor: "pointer", padding: 3 }} title="Editar dados do médico">
+                    <Icon name="pencil" size={12} color="var(--ink-soft)" />
+                  </button>
+                  <button onClick={() => setConfirmExcluir({ tipo: "medico", item: m })} style={{ background: "transparent", border: "none", display: "flex", cursor: "pointer", padding: 3 }} title="Remover médico">
                     <Icon name="x" size={13} color="var(--ink-soft)" />
                   </button>
                 </div>
@@ -3792,6 +3895,7 @@ function ProdutividadeMedica() {
                   <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Médico</th>
                   <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Atribuídos</th>
                   <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Feitos</th>
+                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Pendentes</th>
                   <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Taxa</th>
                 </tr>
               </thead>
@@ -3801,6 +3905,7 @@ function ProdutividadeMedica() {
                     <td style={{ padding: "10px 16px", fontWeight: 600, color: "var(--steel)", textDecoration: "underline" }}>{m.nome}</td>
                     <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{m.atribuidos}</td>
                     <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{m.feitos}</td>
+                    <td style={{ padding: "10px 16px" }}><Badge bg="var(--amber-pale)" fg="var(--amber)">{m.atribuidos - m.feitos}</Badge></td>
                     <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{m.atribuidos > 0 ? Math.round((m.feitos / m.atribuidos) * 100) : 0}%</td>
                   </tr>
                 ))}
@@ -3865,8 +3970,8 @@ function ProdutividadeMedica() {
         />
       </Modal>
 
-      <Modal open={modalMedico} onClose={() => setModalMedico(false)} title="Novo médico" width={440}>
-        <FormularioMedico onSalvar={salvarMedico} onCancelar={() => setModalMedico(false)} />
+      <Modal open={modalMedico} onClose={() => { setModalMedico(false); setEditandoMedico(null); }} title={editandoMedico ? "Editar médico" : "Novo médico"} width={480}>
+        <FormularioMedico item={editandoMedico} onSalvar={salvarMedico} onCancelar={() => { setModalMedico(false); setEditandoMedico(null); }} />
       </Modal>
 
       <Modal open={modalCaixa} onClose={() => { setModalCaixa(false); setEditandoCaixa(null); }} title={editandoCaixa ? "Editar caixa de entrada" : "Nova caixa de entrada"} width={520}>
@@ -3876,7 +3981,7 @@ function ProdutividadeMedica() {
       <Modal open={!!medicoDetalhe} onClose={() => setMedicoDetalhe(null)} title={medicoDetalhe || ""} width={640}>
         {medicoDetalhe && (
           <div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
               <div style={{ textAlign: "center", padding: "12px 8px", borderRadius: 8, background: "var(--pearl)", border: "1px solid var(--line)" }}>
                 <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Total geral</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "var(--heading)", marginTop: 4 }}>{detalheGeral.atribuidos}</div>
@@ -3886,6 +3991,11 @@ function ProdutividadeMedica() {
                 <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Total geral</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "var(--heading)", marginTop: 4 }}>{detalheGeral.feitos}</div>
                 <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>feitos</div>
+              </div>
+              <div style={{ textAlign: "center", padding: "12px 8px", borderRadius: 8, background: "var(--pearl)", border: "1px solid var(--line)" }}>
+                <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Pendentes</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--heading)", marginTop: 4 }}>{detalheGeral.atribuidos - detalheGeral.feitos}</div>
+                <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>calculado</div>
               </div>
               <div style={{ textAlign: "center", padding: "12px 8px", borderRadius: 8, background: "var(--pearl)", border: "1px solid var(--line)" }}>
                 <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Taxa geral</div>
@@ -3905,7 +4015,7 @@ function ProdutividadeMedica() {
                   <div key={m.mes} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderRadius: 8, background: "var(--pearl)" }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", textTransform: "capitalize" }}>{nomeMesExtenso(m.mes)}</span>
                     <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
-                      <strong style={{ color: "var(--ink)" }}>{m.atribuidos}</strong> atribuídos · <strong style={{ color: "var(--ink)" }}>{m.feitos}</strong> feitos
+                      <strong style={{ color: "var(--ink)" }}>{m.atribuidos}</strong> atribuídos · <strong style={{ color: "var(--ink)" }}>{m.feitos}</strong> feitos · <strong style={{ color: "var(--amber)" }}>{m.atribuidos - m.feitos}</strong> pendentes
                       {m.atribuidos > 0 && <> · {Math.round((m.feitos / m.atribuidos) * 100)}%</>}
                     </span>
                   </div>
@@ -4690,6 +4800,10 @@ function AppRoot() {
     const novo = await inserirRegistro("medicos", { ...form, criado_em: new Date().toISOString() });
     setMedicos((prev) => [...prev, novo].sort((a, b) => a.nome.localeCompare(b.nome)));
   }
+  async function atualizarMedico(id, form) {
+    const atualizado = await atualizarRegistro("medicos", id, form);
+    setMedicos((prev) => prev.map(m => m.id === id ? atualizado : m).sort((a, b) => a.nome.localeCompare(b.nome)));
+  }
   async function excluirMedico(id) {
     await excluirRegistro("medicos", id);
     setMedicos((prev) => prev.filter(m => m.id !== id));
@@ -4765,7 +4879,7 @@ function AppRoot() {
     escalaMedica, criarEscalaMedica, atualizarEscalaMedica, excluirEscalaMedica,
     reunioes, criarReuniao, atualizarReuniao, excluirReuniao,
     produtividadeMedica, criarProdutividadeMedica, atualizarProdutividadeMedica, excluirProdutividadeMedica,
-    medicos, criarMedico, excluirMedico,
+    medicos, criarMedico, atualizarMedico, excluirMedico,
     caixaEntradaMedica, criarCaixaEntrada, atualizarCaixaEntrada, excluirCaixaEntrada,
     usuarios, trocarRolePerfil, alternarAtivoPerfil, excluirPerfil,
     usuarioAtual, logout,
