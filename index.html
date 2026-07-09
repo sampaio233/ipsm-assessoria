@@ -739,6 +739,7 @@ const ICON_PATHS = {
   "pencil": '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
   "plus": '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
   "stethoscope": '<path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>',
+  "hospital": '<path d="M12 6v4"/><path d="M14 8h-4"/><path d="M2 22h20"/><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M6 12H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h2"/><path d="M18 12h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-2"/><path d="M10 18h4"/>',
   "cake": '<path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2 1 3.5 1 2-1 3.5-1 2 1 3.5 1 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/><path d="M12 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/><path d="M17 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/>',
   "id-card": '<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M2 16c0-1.5 1.5-3 4-3s4 1.5 4 3"/><line x1="14" y1="8" x2="18" y2="8"/><line x1="14" y1="12" x2="18" y2="12"/>',
   "trash-2": '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
@@ -1022,6 +1023,7 @@ const NAV_ITEMS = [
   { id: "escalamedica", label: "Escala Médica", icon: "stethoscope" },
   { id: "produtividademedica", label: "Produtividade Médica", icon: "package" },
   { id: "reunioes", label: "Reuniões", icon: "users-round" },
+  { id: "hospitais", label: "Hospitais", icon: "hospital" },
   { id: "atestados", label: "Atestados de Funcionários", icon: "file-text" },
   { id: "equipe", label: "Equipe & Produtividade", icon: "users", adminOnly: true },
   { id: "relatorios", label: "Relatórios", icon: "file-bar-chart-2" },
@@ -1470,15 +1472,14 @@ function Dashboard({ setActive }) {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [demandasMes]);
 
-  const produtividadeMedicaMes = useMemo(() => produtividadeMedica.filter(p => ehMesAtual(p.data)), [produtividadeMedica]);
+  const produtividadeMedicaMes = useMemo(() => produtividadeMedica.filter(p => ehMesAtual(p.data) && !p.day_off), [produtividadeMedica]);
   const relatorioMedicoResumo = useMemo(() => {
     const map = {};
     produtividadeMedicaMes.forEach(p => {
-      if (!map[p.nome_medico]) map[p.nome_medico] = { nome: p.nome_medico, atribuidos: 0, feitos: 0 };
-      map[p.nome_medico].atribuidos += p.atribuidos || 0;
-      map[p.nome_medico].feitos += p.feitos || 0;
+      if (!map[p.nome_medico]) map[p.nome_medico] = { nome: p.nome_medico, avaliados: 0 };
+      map[p.nome_medico].avaliados += p.feitos || 0;
     });
-    return Object.values(map).sort((a, b) => b.atribuidos - a.atribuidos);
+    return Object.values(map).sort((a, b) => b.avaliados - a.avaliados);
   }, [produtividadeMedicaMes]);
   const caixaEntradaRecente = useMemo(() => {
     return caixaEntradaMedica.length > 0 ? [...caixaEntradaMedica].sort((a, b) => (b.data || "").localeCompare(a.data || ""))[0] : null;
@@ -1601,7 +1602,7 @@ function Dashboard({ setActive }) {
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               {caixaEntradaRecente && (
                 <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
-                  <strong style={{ color: "var(--ink)" }}>{caixaEntradaRecente.quantidade}</strong> na caixa de entrada (em {formatarData(caixaEntradaRecente.data)})
+                  <strong style={{ color: "var(--ink)" }}>{caixaEntradaRecente.quantidade}</strong> na caixa SEI (em {formatarData(caixaEntradaRecente.data)})
                 </span>
               )}
               <Button size="sm" variant="secondary" icon="stethoscope" onClick={() => setActive("produtividademedica")}>Ver tudo</Button>
@@ -1612,20 +1613,14 @@ function Dashboard({ setActive }) {
               <thead>
                 <tr style={{ textAlign: "left", borderBottom: "1px solid var(--line)" }}>
                   <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Médico</th>
-                  <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Atribuídos</th>
-                  <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Feitos</th>
-                  <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Pendentes</th>
-                  <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Taxa</th>
+                  <th style={{ padding: "8px 12px", color: "var(--ink-soft)", fontSize: 11.5, textTransform: "uppercase" }}>Avaliados no mês</th>
                 </tr>
               </thead>
               <tbody>
                 {relatorioMedicoResumo.slice(0, 6).map((m) => (
                   <tr key={m.nome} style={{ borderBottom: "1px solid var(--line-soft)" }}>
                     <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--ink)" }}>{m.nome}</td>
-                    <td style={{ padding: "8px 12px", color: "var(--ink-soft)" }}>{m.atribuidos}</td>
-                    <td style={{ padding: "8px 12px", color: "var(--ink-soft)" }}>{m.feitos}</td>
-                    <td style={{ padding: "8px 12px", color: "var(--amber)" }}>{m.atribuidos - m.feitos}</td>
-                    <td style={{ padding: "8px 12px", color: "var(--ink-soft)" }}>{m.atribuidos > 0 ? Math.round((m.feitos / m.atribuidos) * 100) : 0}%</td>
+                    <td style={{ padding: "8px 12px", color: "var(--ink-soft)" }}>{m.avaliados}</td>
                   </tr>
                 ))}
               </tbody>
@@ -3573,10 +3568,11 @@ function FormularioCaixaEntrada({ item, onSalvar, onCancelar }) {
   );
 }
 
+
 function FormularioProdutividadeMedica({ item, onSalvar, onCancelar, medicos, onPedirNovoMedico }) {
   const toast = useToast();
   const [form, setForm] = useState(item || {
-    nome_medico: medicos[0] ? medicos[0].nome : "", data: hojeISO(), atribuidos: "", feitos: "", observacoes: "",
+    nome_medico: medicos[0] ? medicos[0].nome : "", data: hojeISO(), feitos: "", day_off: false, observacoes: "",
   });
   const [salvando, setSalvando] = useState(false);
 
@@ -3590,7 +3586,7 @@ function FormularioProdutividadeMedica({ item, onSalvar, onCancelar, medicos, on
     if (!validar()) return;
     setSalvando(true);
     try {
-      await onSalvar({ ...form, atribuidos: Number(form.atribuidos) || 0, feitos: Number(form.feitos) || 0 });
+      await onSalvar({ ...form, feitos: form.day_off ? 0 : (Number(form.feitos) || 0) });
     } catch (err) {
       toast("Não foi possível salvar: " + err.message, "error");
     } finally {
@@ -3613,21 +3609,35 @@ function FormularioProdutividadeMedica({ item, onSalvar, onCancelar, medicos, on
         )}
       </Field>
       <Field label="Data" required><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Atribuídos no dia" hint="Só os processos NOVOS que entraram neste dia — o sistema calcula o pendente sozinho, não precisa somar na mão.">
-          <Input type="number" min="0" value={form.atribuidos} onChange={(e) => setForm({ ...form, atribuidos: e.target.value })} placeholder="0" />
-        </Field>
-        <Field label="Feitos no dia" hint="Quantos ele concluiu">
+
+      <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, cursor: "pointer" }}>
+        <input type="checkbox" checked={form.day_off} onChange={(e) => setForm({ ...form, day_off: e.target.checked })} style={{ width: 16, height: 16 }} />
+        <span style={{ fontSize: 13.5, color: "var(--ink)", fontWeight: 600 }}>Day off (folga) neste dia</span>
+      </label>
+
+      {!form.day_off && (
+        <Field label="Quantidade de processos avaliados">
           <Input type="number" min="0" value={form.feitos} onChange={(e) => setForm({ ...form, feitos: e.target.value })} placeholder="0" />
         </Field>
-      </div>
-      <Field label="Observações"><Textarea rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></Field>
+      )}
+
+      <Field label="Observação" hint='Opcional — ex: "Desligamento".'>
+        <Input value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+      </Field>
+
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
         <Button variant="secondary" onClick={onCancelar}>Cancelar</Button>
         <Button variant="accent" icon="check" disabled={salvando || medicos.length === 0} onClick={salvar}>{salvando ? <Spinner size={14} color="#fff" /> : "Salvar"}</Button>
       </div>
     </div>
   );
+}
+
+function nomeDiaSemanaData(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  const nomes = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+  return nomes[d.getDay()];
 }
 
 function ProdutividadeMedica() {
@@ -3645,86 +3655,32 @@ function ProdutividadeMedica() {
   const [modalCaixa, setModalCaixa] = useState(false);
   const [editandoCaixa, setEditandoCaixa] = useState(null);
   const [confirmExcluir, setConfirmExcluir] = useState(null); // { tipo: 'registro'|'medico'|'caixa', item }
-
-  const [buscaMedico, setBuscaMedico] = useState("");
-  const [periodoInicio, setPeriodoInicio] = useState("");
-  const [periodoFim, setPeriodoFim] = useState("");
+  const [diaVisualizado, setDiaVisualizado] = useState(hojeISO());
   const [medicoDetalhe, setMedicoDetalhe] = useState(null);
 
-  const rechartsDisponivel = useRechartsPronto();
-  const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } = rechartsDisponivel ? Recharts : {};
-
-  const registrosFiltrados = useMemo(() => {
-    return produtividadeMedica.filter(p => {
-      const matchMedico = !buscaMedico.trim() || (p.nome_medico || "").toLowerCase().includes(buscaMedico.toLowerCase());
-      const matchInicio = !periodoInicio || (p.data || "") >= periodoInicio;
-      const matchFim = !periodoFim || (p.data || "") <= periodoFim;
-      return matchMedico && matchInicio && matchFim;
-    }).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-  }, [produtividadeMedica, buscaMedico, periodoInicio, periodoFim]);
-
-  const caixaFiltrada = useMemo(() => {
-    return caixaEntradaMedica.filter(c => {
-      const matchInicio = !periodoInicio || (c.data || "") >= periodoInicio;
-      const matchFim = !periodoFim || (c.data || "") <= periodoFim;
-      return matchInicio && matchFim;
-    }).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-  }, [caixaEntradaMedica, periodoInicio, periodoFim]);
-
-  const relatorioPorMedico = useMemo(() => {
-    const map = {};
-    registrosFiltrados.forEach(p => {
-      if (!map[p.nome_medico]) map[p.nome_medico] = { nome: p.nome_medico, atribuidos: 0, feitos: 0 };
-      map[p.nome_medico].atribuidos += p.atribuidos || 0;
-      map[p.nome_medico].feitos += p.feitos || 0;
-    });
-    return Object.values(map).sort((a, b) => b.atribuidos - a.atribuidos);
-  }, [registrosFiltrados]);
-
-  const totais = useMemo(() => {
-    const atribuidos = registrosFiltrados.reduce((s, p) => s + (p.atribuidos || 0), 0);
-    const feitos = registrosFiltrados.reduce((s, p) => s + (p.feitos || 0), 0);
-    const caixaMaisRecente = caixaEntradaMedica.length > 0
-      ? [...caixaEntradaMedica].sort((a, b) => (b.data || "").localeCompare(a.data || ""))[0]
-      : null;
-    const taxa = atribuidos > 0 ? Math.round((feitos / atribuidos) * 100) : 0;
-    return { atribuidos, feitos, caixaMaisRecente, taxa };
-  }, [registrosFiltrados, caixaEntradaMedica]);
-
-  const dadosGrafico = useMemo(() => relatorioPorMedico.slice(0, 12).map(m => ({ name: m.nome, Atribuídos: m.atribuidos, Feitos: m.feitos })), [relatorioPorMedico]);
-
-  // Painel de detalhe por médico: todos os registros dele, SEM o filtro de
-  // período (o "geral" precisa contar tudo que já foi lançado, sempre).
-  const registrosDoMedicoDetalhe = useMemo(() => {
-    if (!medicoDetalhe) return [];
-    return produtividadeMedica.filter(p => p.nome_medico === medicoDetalhe).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
-  }, [produtividadeMedica, medicoDetalhe]);
-
-  const detalheGeral = useMemo(() => {
-    return registrosDoMedicoDetalhe.reduce((acc, p) => {
-      acc.atribuidos += p.atribuidos || 0;
-      acc.feitos += p.feitos || 0;
-      return acc;
-    }, { atribuidos: 0, feitos: 0 });
-  }, [registrosDoMedicoDetalhe]);
-
-  const detalhePorMes = useMemo(() => {
-    const map = {};
-    registrosDoMedicoDetalhe.forEach(p => {
-      const mes = (p.data || "").slice(0, 7); // YYYY-MM
-      if (!mes) return;
-      if (!map[mes]) map[mes] = { mes, atribuidos: 0, feitos: 0 };
-      map[mes].atribuidos += p.atribuidos || 0;
-      map[mes].feitos += p.feitos || 0;
-    });
-    return Object.values(map).sort((a, b) => b.mes.localeCompare(a.mes));
-  }, [registrosDoMedicoDetalhe]);
-
-  function nomeMesExtenso(mesIso) {
-    const [ano, mes] = mesIso.split("-");
-    const nomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    return `${nomes[Number(mes) - 1]} de ${ano}`;
+  function mudarDia(delta) {
+    const d = new Date(diaVisualizado + "T00:00:00");
+    d.setDate(d.getDate() + delta);
+    setDiaVisualizado(d.toISOString().slice(0, 10));
   }
+
+  const registrosDoDia = useMemo(() => {
+    return produtividadeMedica.filter(p => p.data === diaVisualizado).sort((a, b) => (b.feitos || 0) - (a.feitos || 0));
+  }, [produtividadeMedica, diaVisualizado]);
+
+  const emAtividadeDia = useMemo(() => registrosDoDia.filter(p => !p.day_off), [registrosDoDia]);
+  const emFolgaDia = useMemo(() => registrosDoDia.filter(p => p.day_off), [registrosDoDia]);
+  const totalAvaliadosDia = useMemo(() => emAtividadeDia.reduce((s, p) => s + (p.feitos || 0), 0), [emAtividadeDia]);
+
+  const caixaDoDia = useMemo(() => caixaEntradaMedica.find(c => c.data === diaVisualizado), [caixaEntradaMedica, diaVisualizado]);
+  const caixaMaisRecente = useMemo(() => {
+    return caixaEntradaMedica.length > 0 ? [...caixaEntradaMedica].sort((a, b) => (b.data || "").localeCompare(a.data || ""))[0] : null;
+  }, [caixaEntradaMedica]);
+
+  const produtividadeMesAtual = useMemo(() => produtividadeMedica.filter(p => ehMesAtual(p.data) && !p.day_off), [produtividadeMedica]);
+  const totalAvaliadosMes = useMemo(() => produtividadeMesAtual.reduce((s, p) => s + (p.feitos || 0), 0), [produtividadeMesAtual]);
+
+  const caixaFiltrada = useMemo(() => [...caixaEntradaMedica].sort((a, b) => (b.data || "").localeCompare(a.data || "")), [caixaEntradaMedica]);
 
   async function salvarRegistro(form) {
     if (editandoRegistro) {
@@ -3756,7 +3712,7 @@ function ProdutividadeMedica() {
       toast("Registro de caixa atualizado.", "success");
     } else {
       await criarCaixaEntrada(form);
-      toast("Caixa de entrada registrada.", "success");
+      toast("Caixa registrada.", "success");
     }
     setModalCaixa(false);
     setEditandoCaixa(null);
@@ -3775,61 +3731,128 @@ function ProdutividadeMedica() {
     setConfirmExcluir(null);
   }
 
-  const tooltipStyle = { fontSize: 12.5, borderRadius: 8, border: "1px solid var(--line)", background: "var(--paper)", color: "var(--ink)" };
+  // Detalhe por médico: dia a dia + total geral (sem período, sempre tudo)
+  const registrosDoMedicoDetalhe = useMemo(() => {
+    if (!medicoDetalhe) return [];
+    return produtividadeMedica.filter(p => p.nome_medico === medicoDetalhe && !p.day_off).sort((a, b) => (b.data || "").localeCompare(a.data || ""));
+  }, [produtividadeMedica, medicoDetalhe]);
+  const totalGeralMedico = useMemo(() => registrosDoMedicoDetalhe.reduce((s, p) => s + (p.feitos || 0), 0), [registrosDoMedicoDetalhe]);
+  const porMesMedico = useMemo(() => {
+    const map = {};
+    registrosDoMedicoDetalhe.forEach(p => {
+      const mes = (p.data || "").slice(0, 7);
+      if (!mes) return;
+      map[mes] = (map[mes] || 0) + (p.feitos || 0);
+    });
+    return Object.entries(map).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [registrosDoMedicoDetalhe]);
+
+  function nomeMesExtenso(mesIso) {
+    const [ano, mes] = mesIso.split("-");
+    const nomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    return `${nomes[Number(mes) - 1]} de ${ano}`;
+  }
 
   return (
     <div className="fade-in">
       <SectionTitle
         eyebrow="Corpo clínico"
         title="Produtividade Médica"
-        subtitle="Registre, por dia, quantos processos foram atribuídos e feitos por cada médico. A caixa de entrada é um número geral do dia, separado disso."
+        subtitle="Quantidade de processos avaliados por médico, por dia. A caixa SEI é um número geral do dia, separado disso."
         action={<Button icon="plus" variant="accent" onClick={() => { setEditandoRegistro(null); setModalRegistro(true); }}>Novo registro</Button>}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, marginBottom: 20 }}>
-        <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--steel-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="inbox" size={17} color="var(--steel)" /></div>
-          <div><div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Atribuídos</div><div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totais.atribuidos}</div></div>
-        </Card>
-        <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--teal-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="check-circle-2" size={17} color="var(--teal)" /></div>
-          <div><div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Feitos</div><div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totais.feitos}</div></div>
-        </Card>
-        <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--amber-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="clock" size={17} color="var(--amber)" /></div>
-          <div>
-            <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Pendentes</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totais.atribuidos - totais.feitos}</div>
-            <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>calculado automaticamente</div>
+      <Card style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <Button size="sm" variant="secondary" icon="chevron-left" onClick={() => mudarDia(-1)} />
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 12, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              {nomeDiaSemanaData(diaVisualizado)}
+            </div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--heading)" }}>{formatarData(diaVisualizado)}</div>
           </div>
-        </Card>
-        <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--amber-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="package" size={17} color="var(--amber)" /></div>
+          <Button size="sm" variant="secondary" icon="chevron-right" onClick={() => mudarDia(1)} disabled={diaVisualizado >= hojeISO()} />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "var(--amber-pale)", marginBottom: 18 }}>
+          <Icon name="package" size={17} color="var(--amber)" />
+          <span style={{ fontSize: 14, color: "var(--ink)" }}>
+            <strong>Caixa SEI {diaVisualizado === hojeISO() ? "(hoje)" : ""}:</strong> {caixaDoDia ? caixaDoDia.quantidade : (diaVisualizado === hojeISO() && caixaMaisRecente ? `${caixaMaisRecente.quantidade} (em ${formatarData(caixaMaisRecente.data)})` : "sem registro neste dia")}
+          </span>
+        </div>
+
+        {registrosDoDia.length === 0 ? (
+          <EmptyState icon="stethoscope" title="Nenhum registro neste dia" subtitle="Clique em 'Novo registro' para lançar a produtividade de um médico." />
+        ) : (
           <div>
-            <div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Caixa de entrada</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totais.caixaMaisRecente ? totais.caixaMaisRecente.quantidade : "—"}</div>
-            {totais.caixaMaisRecente && <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>em {formatarData(totais.caixaMaisRecente.data)}</div>}
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: 10 }}>
+              Quantidade de processos avaliados
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 14 }}>
+              {emAtividadeDia.map((p) => (
+                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 4px", borderBottom: "1px solid var(--line-soft)" }}>
+                  <span style={{ fontSize: 14.5, color: "var(--ink)" }}>
+                    <strong>{p.nome_medico}</strong>: {p.feitos}
+                    {p.observacoes && <span style={{ color: "var(--ink-soft)", fontWeight: 400 }}> ({p.observacoes})</span>}
+                  </span>
+                  <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                    <Button size="sm" variant="ghost" icon="pencil" onClick={() => { setEditandoRegistro(p); setModalRegistro(true); }} />
+                    <Button size="sm" variant="ghost" icon="trash-2" onClick={() => setConfirmExcluir({ tipo: "registro", item: p })} style={{ color: "var(--terracotta)" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 4px", borderTop: "2px solid var(--line)", marginBottom: emFolgaDia.length > 0 ? 14 : 0 }}>
+              <Icon name="check-circle-2" size={16} color="var(--teal)" />
+              <span style={{ fontSize: 14.5, fontWeight: 700, color: "var(--ink)" }}>Total de processos avaliados: {totalAvaliadosDia}</span>
+            </div>
+
+            {emFolgaDia.length > 0 && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <Icon name="calendar-clock" size={16} color="var(--ink-soft)" style={{ marginTop: 2 }} />
+                <span style={{ fontSize: 13.5, color: "var(--ink-soft)" }}>
+                  <strong style={{ color: "var(--ink)" }}>Day off:</strong> {emFolgaDia.map(p => p.nome_medico).join(", ")}
+                  {" "}
+                  {emFolgaDia.map(p => (
+                    <span key={p.id} style={{ display: "inline-flex", gap: 4, marginLeft: 6 }}>
+                      <button onClick={() => { setEditandoRegistro(p); setModalRegistro(true); }} style={{ background: "transparent", border: "none", cursor: "pointer", display: "inline-flex" }}><Icon name="pencil" size={11} color="var(--ink-soft)" /></button>
+                      <button onClick={() => setConfirmExcluir({ tipo: "registro", item: p })} style={{ background: "transparent", border: "none", cursor: "pointer", display: "inline-flex" }}><Icon name="x" size={12} color="var(--terracotta)" /></button>
+                    </span>
+                  ))}
+                </span>
+              </div>
+            )}
           </div>
-        </Card>
-        <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--steel-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icon name="percent" size={17} color="var(--steel)" /></div>
-          <div><div style={{ fontSize: 11.5, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Taxa de conclusão</div><div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totais.taxa}%</div></div>
-        </Card>
-      </div>
+        )}
+      </Card>
+
+      <Card style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--teal-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <Icon name="calendar-days" size={19} color="var(--teal)" />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Total avaliado no mês</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totalAvaliadosMes} <span style={{ fontSize: 13, fontWeight: 400, color: "var(--ink-soft)" }}>processos</span></div>
+        </div>
+      </Card>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h3 style={{ fontFamily: "var(--font-display)", fontSize: 15, color: "var(--heading)", margin: 0 }}>Médicos cadastrados</h3>
-            <Button size="sm" variant="secondary" icon="plus" onClick={() => setModalMedico(true)}>Novo médico</Button>
+            <Button size="sm" variant="secondary" icon="plus" onClick={() => { setEditandoMedico(null); setModalMedico(true); }}>Novo médico</Button>
           </div>
           {medicos.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--ink-soft)" }}>Nenhum médico cadastrado ainda.</p>
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {medicos.map(m => (
-                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 6px 6px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--pearl)" }}>
-                  <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>{m.nome}</span>
+                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <button onClick={() => setMedicoDetalhe(m.nome)} style={{
+                    padding: "6px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--pearl)",
+                    fontSize: 13, fontWeight: 600, color: "var(--steel)", textDecoration: "underline", cursor: "pointer",
+                  }}>{m.nome}</button>
                   <button onClick={() => { setEditandoMedico(m); setModalMedico(true); }} style={{ background: "transparent", border: "none", display: "flex", cursor: "pointer", padding: 3 }} title="Editar dados do médico">
                     <Icon name="pencil" size={12} color="var(--ink-soft)" />
                   </button>
@@ -3840,15 +3863,16 @@ function ProdutividadeMedica() {
               ))}
             </div>
           )}
+          <p style={{ fontSize: 11.5, color: "var(--ink-soft)", marginTop: 10, marginBottom: 0 }}>Clique no nome do médico para ver o histórico dele.</p>
         </Card>
 
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 style={{ fontFamily: "var(--font-display)", fontSize: 15, color: "var(--heading)", margin: 0 }}>Caixa de entrada por dia</h3>
+            <h3 style={{ fontFamily: "var(--font-display)", fontSize: 15, color: "var(--heading)", margin: 0 }}>Caixa SEI por dia</h3>
             <Button size="sm" variant="secondary" icon="plus" onClick={() => { setEditandoCaixa(null); setModalCaixa(true); }}>Novo</Button>
           </div>
           {caixaFiltrada.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--ink-soft)" }}>Nenhum registro de caixa de entrada ainda.</p>
+            <p style={{ fontSize: 13, color: "var(--ink-soft)" }}>Nenhum registro ainda.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 180, overflow: "auto" }}>
               {caixaFiltrada.map(c => (
@@ -3868,99 +3892,7 @@ function ProdutividadeMedica() {
         </Card>
       </div>
 
-      {rechartsDisponivel && dadosGrafico.length > 0 && (
-        <Card style={{ marginBottom: 20 }}>
-          <h3 style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--heading)", marginTop: 0, marginBottom: 14 }}>Atribuídos x Feitos por médico</h3>
-          <ResponsiveContainer width="100%" height={Math.max(220, dadosGrafico.length * 42)}>
-            <BarChart data={dadosGrafico} layout="vertical" margin={{ left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--line-soft)" horizontal={false} />
-              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11.5, fill: "var(--ink-soft)" }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11, fill: "var(--ink-soft)" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: "var(--ink)" }} labelStyle={{ color: "var(--ink)" }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="Atribuídos" fill="var(--steel)" radius={[0, 6, 6, 0]} />
-              <Bar dataKey="Feitos" fill="var(--teal)" radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      )}
-
-      {relatorioPorMedico.length > 0 && (
-        <Card style={{ marginBottom: 20, padding: 0 }}>
-          <div style={{ padding: "14px 16px 0", fontSize: 12, color: "var(--ink-soft)" }}>Clique no nome do médico para ver o detalhe dia a dia, por mês e o total geral.</div>
-          <div style={{ overflow: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
-              <thead>
-                <tr style={{ textAlign: "left", borderBottom: "1px solid var(--line)" }}>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Médico</th>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Atribuídos</th>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Feitos</th>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Pendentes</th>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Taxa</th>
-                </tr>
-              </thead>
-              <tbody>
-                {relatorioPorMedico.map((m) => (
-                  <tr key={m.nome} style={{ borderBottom: "1px solid var(--line-soft)", cursor: "pointer" }} onClick={() => setMedicoDetalhe(m.nome)}>
-                    <td style={{ padding: "10px 16px", fontWeight: 600, color: "var(--steel)", textDecoration: "underline" }}>{m.nome}</td>
-                    <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{m.atribuidos}</td>
-                    <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{m.feitos}</td>
-                    <td style={{ padding: "10px 16px" }}><Badge bg="var(--amber-pale)" fg="var(--amber)">{m.atribuidos - m.feitos}</Badge></td>
-                    <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{m.atribuidos > 0 ? Math.round((m.feitos / m.atribuidos) * 100) : 0}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: "1 1 220px" }}>
-          <Icon name="search" size={15} color="var(--ink-soft)" style={{ position: "absolute", left: 12, top: 12 }} />
-          <Input value={buscaMedico} onChange={(e) => setBuscaMedico(e.target.value)} placeholder="Buscar por nome do médico..." style={{ paddingLeft: 36 }} />
-        </div>
-        <Input type="date" value={periodoInicio} onChange={(e) => setPeriodoInicio(e.target.value)} style={{ width: 160 }} title="Período — de" />
-        <Input type="date" value={periodoFim} onChange={(e) => setPeriodoFim(e.target.value)} style={{ width: 160 }} title="Período — até" />
-      </div>
-
-      {produtividadeMedica.length === 0 ? (
-        <Card><EmptyState icon="stethoscope" title="Nenhum registro de produtividade" subtitle="Cadastre um médico e registre a produtividade diária." action={<Button icon="plus" variant="accent" onClick={() => setModalRegistro(true)}>Novo registro</Button>} /></Card>
-      ) : registrosFiltrados.length === 0 ? (
-        <Card><EmptyState icon="search-x" title="Nenhum resultado" subtitle="Ajuste os filtros de busca." /></Card>
-      ) : (
-        <Card padded={false}>
-          <div style={{ overflow: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
-              <thead>
-                <tr style={{ textAlign: "left", borderBottom: "1px solid var(--line)" }}>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Médico</th>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Data</th>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Atribuídos</th>
-                  <th style={{ padding: "12px 16px", color: "var(--ink-soft)", fontSize: 12, textTransform: "uppercase" }}>Feitos</th>
-                  <th style={{ padding: "12px 16px" }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {registrosFiltrados.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: "1px solid var(--line-soft)" }}>
-                    <td style={{ padding: "10px 16px", fontWeight: 600, color: "var(--steel)", textDecoration: "underline", cursor: "pointer" }} onClick={() => setMedicoDetalhe(p.nome_medico)}>{p.nome_medico}</td>
-                    <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{formatarData(p.data)}</td>
-                    <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{p.atribuidos}</td>
-                    <td style={{ padding: "10px 16px", color: "var(--ink-soft)" }}>{p.feitos}</td>
-                    <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                      <Button size="sm" variant="ghost" icon="pencil" onClick={() => { setEditandoRegistro(p); setModalRegistro(true); }} />
-                      <Button size="sm" variant="ghost" icon="trash-2" onClick={() => setConfirmExcluir({ tipo: "registro", item: p })} style={{ color: "var(--terracotta)" }} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      <Modal open={modalRegistro} onClose={() => { setModalRegistro(false); setEditandoRegistro(null); }} title={editandoRegistro ? "Editar registro" : "Novo registro de produtividade"} width={600}>
+      <Modal open={modalRegistro} onClose={() => { setModalRegistro(false); setEditandoRegistro(null); }} title={editandoRegistro ? "Editar registro" : "Novo registro de produtividade"} width={560}>
         <FormularioProdutividadeMedica
           item={editandoRegistro}
           medicos={medicos}
@@ -3974,50 +3906,28 @@ function ProdutividadeMedica() {
         <FormularioMedico item={editandoMedico} onSalvar={salvarMedico} onCancelar={() => { setModalMedico(false); setEditandoMedico(null); }} />
       </Modal>
 
-      <Modal open={modalCaixa} onClose={() => { setModalCaixa(false); setEditandoCaixa(null); }} title={editandoCaixa ? "Editar caixa de entrada" : "Nova caixa de entrada"} width={520}>
+      <Modal open={modalCaixa} onClose={() => { setModalCaixa(false); setEditandoCaixa(null); }} title={editandoCaixa ? "Editar caixa SEI" : "Nova caixa SEI"} width={520}>
         <FormularioCaixaEntrada item={editandoCaixa} onSalvar={salvarCaixa} onCancelar={() => { setModalCaixa(false); setEditandoCaixa(null); }} />
       </Modal>
 
-      <Modal open={!!medicoDetalhe} onClose={() => setMedicoDetalhe(null)} title={medicoDetalhe || ""} width={640}>
+      <Modal open={!!medicoDetalhe} onClose={() => setMedicoDetalhe(null)} title={medicoDetalhe || ""} width={560}>
         {medicoDetalhe && (
           <div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
-              <div style={{ textAlign: "center", padding: "12px 8px", borderRadius: 8, background: "var(--pearl)", border: "1px solid var(--line)" }}>
-                <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Total geral</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--heading)", marginTop: 4 }}>{detalheGeral.atribuidos}</div>
-                <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>atribuídos</div>
-              </div>
-              <div style={{ textAlign: "center", padding: "12px 8px", borderRadius: 8, background: "var(--pearl)", border: "1px solid var(--line)" }}>
-                <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Total geral</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--heading)", marginTop: 4 }}>{detalheGeral.feitos}</div>
-                <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>feitos</div>
-              </div>
-              <div style={{ textAlign: "center", padding: "12px 8px", borderRadius: 8, background: "var(--pearl)", border: "1px solid var(--line)" }}>
-                <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Pendentes</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--heading)", marginTop: 4 }}>{detalheGeral.atribuidos - detalheGeral.feitos}</div>
-                <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>calculado</div>
-              </div>
-              <div style={{ textAlign: "center", padding: "12px 8px", borderRadius: 8, background: "var(--pearl)", border: "1px solid var(--line)" }}>
-                <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Taxa geral</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "var(--heading)", marginTop: 4 }}>
-                  {detalheGeral.atribuidos > 0 ? Math.round((detalheGeral.feitos / detalheGeral.atribuidos) * 100) : 0}%
-                </div>
-                <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>{registrosDoMedicoDetalhe.length} registro(s)</div>
-              </div>
+            <div style={{ textAlign: "center", padding: "14px 8px", borderRadius: 8, background: "var(--pearl)", border: "1px solid var(--line)", marginBottom: 20 }}>
+              <div style={{ fontSize: 10.5, color: "var(--ink-soft)", fontWeight: 700, textTransform: "uppercase" }}>Total geral avaliado</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--heading)", marginTop: 4 }}>{totalGeralMedico}</div>
+              <div style={{ fontSize: 10.5, color: "var(--ink-soft)" }}>{registrosDoMedicoDetalhe.length} dia(s) registrado(s)</div>
             </div>
 
             <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>Por mês</div>
-            {detalhePorMes.length === 0 ? (
+            {porMesMedico.length === 0 ? (
               <p style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 18 }}>Nenhum registro ainda.</p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
-                {detalhePorMes.map(m => (
-                  <div key={m.mes} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderRadius: 8, background: "var(--pearl)" }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", textTransform: "capitalize" }}>{nomeMesExtenso(m.mes)}</span>
-                    <span style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>
-                      <strong style={{ color: "var(--ink)" }}>{m.atribuidos}</strong> atribuídos · <strong style={{ color: "var(--ink)" }}>{m.feitos}</strong> feitos · <strong style={{ color: "var(--amber)" }}>{m.atribuidos - m.feitos}</strong> pendentes
-                      {m.atribuidos > 0 && <> · {Math.round((m.feitos / m.atribuidos) * 100)}%</>}
-                    </span>
+                {porMesMedico.map(([mes, total]) => (
+                  <div key={mes} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderRadius: 8, background: "var(--pearl)" }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", textTransform: "capitalize" }}>{nomeMesExtenso(mes)}</span>
+                    <span style={{ fontSize: 13, color: "var(--ink)" }}><strong>{total}</strong> avaliados</span>
                   </div>
                 ))}
               </div>
@@ -4032,15 +3942,13 @@ function ProdutividadeMedica() {
                   <thead>
                     <tr style={{ textAlign: "left", borderBottom: "1px solid var(--line)", position: "sticky", top: 0, background: "var(--paper)" }}>
                       <th style={{ padding: "6px 10px", color: "var(--ink-soft)", fontSize: 11, textTransform: "uppercase" }}>Data</th>
-                      <th style={{ padding: "6px 10px", color: "var(--ink-soft)", fontSize: 11, textTransform: "uppercase" }}>Atribuídos</th>
-                      <th style={{ padding: "6px 10px", color: "var(--ink-soft)", fontSize: 11, textTransform: "uppercase" }}>Feitos</th>
+                      <th style={{ padding: "6px 10px", color: "var(--ink-soft)", fontSize: 11, textTransform: "uppercase" }}>Avaliados</th>
                     </tr>
                   </thead>
                   <tbody>
                     {registrosDoMedicoDetalhe.map(p => (
                       <tr key={p.id} style={{ borderBottom: "1px solid var(--line-soft)" }}>
                         <td style={{ padding: "6px 10px", color: "var(--ink)" }}>{formatarData(p.data)}</td>
-                        <td style={{ padding: "6px 10px", color: "var(--ink-soft)" }}>{p.atribuidos}</td>
                         <td style={{ padding: "6px 10px", color: "var(--ink-soft)" }}>{p.feitos}</td>
                       </tr>
                     ))}
@@ -4057,8 +3965,8 @@ function ProdutividadeMedica() {
           <div>
             <p style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.5 }}>
               {confirmExcluir.tipo === "registro" && <>Remover o registro de <strong>{confirmExcluir.item.nome_medico}</strong> ({formatarData(confirmExcluir.item.data)})?</>}
-              {confirmExcluir.tipo === "medico" && <>Remover <strong>{confirmExcluir.item.nome}</strong> da lista de médicos? Os registros de produtividade já lançados para ele não serão apagados.</>}
-              {confirmExcluir.tipo === "caixa" && <>Remover o registro de caixa de entrada de {formatarData(confirmExcluir.item.data)} ({confirmExcluir.item.quantidade} processos)?</>}
+              {confirmExcluir.tipo === "medico" && <>Remover <strong>{confirmExcluir.item.nome}</strong> da lista de médicos? Os registros já lançados para ele não serão apagados.</>}
+              {confirmExcluir.tipo === "caixa" && <>Remover o registro de caixa SEI de {formatarData(confirmExcluir.item.data)} ({confirmExcluir.item.quantidade} processos)?</>}
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
               <Button variant="secondary" onClick={() => setConfirmExcluir(null)}>Cancelar</Button>
@@ -4071,9 +3979,7 @@ function ProdutividadeMedica() {
   );
 }
 
-/* ============================================================
-   MÓDULO: ATESTADOS DE FUNCIONÁRIOS
-============================================================ */
+
 
 
 const TIPOS_ATESTADO = ["Médico", "Odontológico", "Outros"];
@@ -4085,6 +3991,154 @@ function calcularDiasAtestado(dataInicio, dataFim) {
   const diff = Math.round((d2 - d1) / 86400000) + 1;
   return diff > 0 ? diff : 0;
 }
+
+/* ============================================================
+   MÓDULO: CONTATOS DE HOSPITAIS
+   Lista simples de hospitais e telefones, para consulta rápida.
+   Qualquer usuário pode cadastrar, editar e excluir.
+============================================================ */
+
+function FormularioHospital({ item, onSalvar, onCancelar }) {
+  const toast = useToast();
+  const [form, setForm] = useState(item || { nome: "", telefone: "", endereco: "", observacoes: "" });
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar() {
+    if (!form.nome.trim()) { toast("Informe o nome do hospital.", "error"); return; }
+    if (!form.telefone.trim()) { toast("Informe o telefone.", "error"); return; }
+    setSalvando(true);
+    try {
+      await onSalvar(form);
+    } catch (err) {
+      toast("Não foi possível salvar: " + err.message, "error");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div>
+      <Field label="Nome do hospital" required><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Hospital Belo Horizonte" autoFocus /></Field>
+      <Field label="Telefone" required><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(31) 90000-0000" /></Field>
+      <Field label="Endereço" hint="Opcional."><Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} /></Field>
+      <Field label="Observações" hint="Opcional."><Textarea rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></Field>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
+        <Button variant="secondary" onClick={onCancelar}>Cancelar</Button>
+        <Button variant="accent" icon="check" disabled={salvando} onClick={salvar}>{salvando ? <Spinner size={14} color="#fff" /> : "Salvar"}</Button>
+      </div>
+    </div>
+  );
+}
+
+function ContatosHospitais() {
+  const { hospitais, criarHospital, atualizarHospital, excluirHospital } = useApp();
+  const toast = useToast();
+  const [modalAberto, setModalAberto] = useState(false);
+  const [editando, setEditando] = useState(null);
+  const [confirmExcluir, setConfirmExcluir] = useState(null);
+  const [busca, setBusca] = useState("");
+
+  const filtrados = useMemo(() => {
+    return hospitais.filter(h => {
+      const texto = `${h.nome} ${h.endereco || ""}`.toLowerCase();
+      return !busca.trim() || texto.includes(busca.toLowerCase());
+    }).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [hospitais, busca]);
+
+  async function salvar(form) {
+    if (editando) {
+      await atualizarHospital(editando.id, form);
+      toast("Hospital atualizado.", "success");
+    } else {
+      await criarHospital(form);
+      toast("Hospital cadastrado.", "success");
+    }
+    setModalAberto(false);
+    setEditando(null);
+  }
+
+  async function excluir(item) {
+    try {
+      await excluirHospital(item.id);
+      toast("Hospital removido.", "info");
+    } catch (e) {
+      toast("Não foi possível remover: " + e.message, "error");
+    }
+    setConfirmExcluir(null);
+  }
+
+  return (
+    <div className="fade-in">
+      <SectionTitle
+        eyebrow="Contatos"
+        title="Hospitais"
+        subtitle="Telefones dos hospitais parceiros, num só lugar."
+        action={<Button icon="plus" variant="accent" onClick={() => { setEditando(null); setModalAberto(true); }}>Novo hospital</Button>}
+      />
+
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ position: "relative", maxWidth: 360 }}>
+          <Icon name="search" size={15} color="var(--ink-soft)" style={{ position: "absolute", left: 12, top: 12 }} />
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar hospital..." style={{ paddingLeft: 36 }} />
+        </div>
+      </div>
+
+      {hospitais.length === 0 ? (
+        <Card><EmptyState icon="hospital" title="Nenhum hospital cadastrado" subtitle="Cadastre o primeiro contato de hospital." action={<Button icon="plus" variant="accent" onClick={() => setModalAberto(true)}>Cadastrar hospital</Button>} /></Card>
+      ) : filtrados.length === 0 ? (
+        <Card><EmptyState icon="search-x" title="Nenhum resultado" subtitle="Ajuste o termo de busca." /></Card>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+          {filtrados.map((h) => (
+            <Card key={h.id}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--steel-pale)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon name="hospital" size={17} color="var(--steel)" />
+                </div>
+                <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                  <Button size="sm" variant="ghost" icon="pencil" onClick={() => { setEditando(h); setModalAberto(true); }} />
+                  <Button size="sm" variant="ghost" icon="trash-2" onClick={() => setConfirmExcluir(h)} style={{ color: "var(--terracotta)" }} />
+                </div>
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{h.nome}</div>
+              <a href={"tel:" + h.telefone.replace(/\D/g, "")} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13.5, color: "var(--steel)", textDecoration: "none", marginBottom: h.endereco ? 6 : 0 }}>
+                <Icon name="phone" size={14} color="var(--steel)" />
+                {h.telefone}
+              </a>
+              {h.endereco && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12.5, color: "var(--ink-soft)" }}>
+                  <Icon name="map-pin" size={13} color="var(--ink-soft)" style={{ marginTop: 1, flexShrink: 0 }} />
+                  {h.endereco}
+                </div>
+              )}
+              {h.observacoes && <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 6, fontStyle: "italic" }}>{h.observacoes}</div>}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Modal open={modalAberto} onClose={() => { setModalAberto(false); setEditando(null); }} title={editando ? "Editar hospital" : "Novo hospital"} width={480}>
+        <FormularioHospital item={editando} onSalvar={salvar} onCancelar={() => { setModalAberto(false); setEditando(null); }} />
+      </Modal>
+
+      <Modal open={!!confirmExcluir} onClose={() => setConfirmExcluir(null)} title="Remover hospital" width={420}>
+        {confirmExcluir && (
+          <div>
+            <p style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.5 }}>Remover <strong>{confirmExcluir.nome}</strong> da lista de hospitais?</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+              <Button variant="secondary" onClick={() => setConfirmExcluir(null)}>Cancelar</Button>
+              <Button variant="danger" icon="trash-2" onClick={() => excluir(confirmExcluir)}>Remover</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+/* ============================================================
+   MÓDULO: ATESTADOS DE FUNCIONÁRIOS
+============================================================ */
 
 function FormularioAtestado({ onSalvar, onCancelar }) {
   const toast = useToast();
@@ -4588,11 +4642,12 @@ function AppRoot() {
   const [produtividadeMedica, setProdutividadeMedica] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [caixaEntradaMedica, setCaixaEntradaMedica] = useState([]);
+  const [hospitais, setHospitais] = useState([]);
   const [sessaoAuth, setSessaoAuth] = useState(null);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
 
   async function carregarDadosDaEquipe() {
-    const [docs, dem, ates, esc, escMed, reun, prodMed, meds, caixaMed, perfis] = await Promise.all([
+    const [docs, dem, ates, esc, escMed, reun, prodMed, meds, caixaMed, hosps, perfis] = await Promise.all([
       listarRegistros("documentos", "criado_em"),
       listarRegistros("demandas", "data_criacao"),
       listarRegistros("atestados", "criado_em"),
@@ -4602,6 +4657,7 @@ function AppRoot() {
       listarRegistros("produtividade_medica", "data"),
       listarRegistros("medicos", "nome"),
       listarRegistros("caixa_entrada_medica", "data"),
+      listarRegistros("hospitais", "nome"),
       listarPerfis(),
     ]);
     setDocumentos(docs);
@@ -4613,6 +4669,7 @@ function AppRoot() {
     setProdutividadeMedica(prodMed);
     setMedicos(meds);
     setCaixaEntradaMedica(caixaMed);
+    setHospitais(hosps);
     setUsuarios(perfis);
   }
 
@@ -4657,7 +4714,7 @@ function AppRoot() {
         }
       } else {
         setUsuarioAtual(null);
-        setDocumentos([]); setDemandas([]); setAtestados([]); setEscalas([]); setEscalaMedica([]); setReunioes([]); setProdutividadeMedica([]); setMedicos([]); setCaixaEntradaMedica([]); setUsuarios([]);
+        setDocumentos([]); setDemandas([]); setAtestados([]); setEscalas([]); setEscalaMedica([]); setReunioes([]); setProdutividadeMedica([]); setMedicos([]); setCaixaEntradaMedica([]); setHospitais([]); setUsuarios([]);
       }
     });
     return () => { inscrito = false; listener.subscription.unsubscribe(); };
@@ -4827,6 +4884,20 @@ function AppRoot() {
     setCaixaEntradaMedica((prev) => prev.filter(c => c.id !== id));
   }
 
+  /* ---------- CRUD: hospitais ---------- */
+  async function criarHospital(form) {
+    const novo = await inserirRegistro("hospitais", { ...form, criado_em: new Date().toISOString() });
+    setHospitais((prev) => [...prev, novo]);
+  }
+  async function atualizarHospital(id, form) {
+    const atualizado = await atualizarRegistro("hospitais", id, form);
+    setHospitais((prev) => prev.map(h => h.id === id ? atualizado : h));
+  }
+  async function excluirHospital(id) {
+    await excluirRegistro("hospitais", id);
+    setHospitais((prev) => prev.filter(h => h.id !== id));
+  }
+
   /* ---------- Gestão de perfis (Equipe & Produtividade) ---------- */
   async function trocarRolePerfil(id, novoRole) {
     await atualizarPerfil(id, { role: novoRole });
@@ -4881,6 +4952,7 @@ function AppRoot() {
     produtividadeMedica, criarProdutividadeMedica, atualizarProdutividadeMedica, excluirProdutividadeMedica,
     medicos, criarMedico, atualizarMedico, excluirMedico,
     caixaEntradaMedica, criarCaixaEntrada, atualizarCaixaEntrada, excluirCaixaEntrada,
+    hospitais, criarHospital, atualizarHospital, excluirHospital,
     usuarios, trocarRolePerfil, alternarAtivoPerfil, excluirPerfil,
     usuarioAtual, logout,
   };
@@ -4932,6 +5004,7 @@ function AppRoot() {
               {active === "escala" && <EscalaSetores />}
               {active === "escalamedica" && <EscalaMedica />}
               {active === "reunioes" && <Reunioes />}
+              {active === "hospitais" && <ContatosHospitais />}
               {active === "produtividademedica" && <ProdutividadeMedica />}
               {active === "atestados" && <AtestadosFuncionarios />}
               {active === "equipe" && usuarioAtual.role === "admin" && <EquipeProdutividade />}
