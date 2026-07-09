@@ -3679,6 +3679,15 @@ function ProdutividadeMedica() {
 
   const produtividadeMesAtual = useMemo(() => produtividadeMedica.filter(p => ehMesAtual(p.data) && !p.day_off), [produtividadeMedica]);
   const totalAvaliadosMes = useMemo(() => produtividadeMesAtual.reduce((s, p) => s + (p.feitos || 0), 0), [produtividadeMesAtual]);
+  const rankingMes = useMemo(() => {
+    const map = {};
+    produtividadeMesAtual.forEach(p => {
+      map[p.nome_medico] = (map[p.nome_medico] || 0) + (p.feitos || 0);
+    });
+    const lista = Object.entries(map).map(([nome, total]) => ({ nome, total })).sort((a, b) => b.total - a.total);
+    const max = lista.length > 0 ? lista[0].total : 0;
+    return lista.map(item => ({ ...item, percentual: max > 0 ? Math.round((item.total / max) * 100) : 0 }));
+  }, [produtividadeMesAtual]);
 
   const caixaFiltrada = useMemo(() => [...caixaEntradaMedica].sort((a, b) => (b.data || "").localeCompare(a.data || "")), [caixaEntradaMedica]);
 
@@ -3836,6 +3845,29 @@ function ProdutividadeMedica() {
           <div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totalAvaliadosMes} <span style={{ fontSize: 13, fontWeight: 400, color: "var(--ink-soft)" }}>processos</span></div>
         </div>
       </Card>
+
+      {rankingMes.length > 0 && (
+        <Card style={{ marginBottom: 20 }}>
+          <h3 style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--heading)", marginTop: 0, marginBottom: 16 }}>
+            Ranking do mês — quem mais avaliou
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {rankingMes.map((item, i) => (
+              <div key={item.nome} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ width: 20, flexShrink: 0, fontSize: 12.5, fontWeight: 700, color: "var(--ink-soft)", textAlign: "right" }}>{i + 1}º</span>
+                <span style={{ width: 130, flexShrink: 0, fontSize: 13.5, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nome}</span>
+                <div style={{ flex: 1, height: 20, borderRadius: 5, background: "var(--pearl)", overflow: "hidden", position: "relative" }}>
+                  <div style={{
+                    height: "100%", width: `${Math.max(item.percentual, 4)}%`, background: "var(--steel)", borderRadius: 5,
+                    transition: "width 0.4s ease",
+                  }} />
+                </div>
+                <span style={{ width: 34, flexShrink: 0, fontSize: 13.5, fontWeight: 700, color: "var(--ink)", textAlign: "right" }}>{item.total}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
         <Card>
