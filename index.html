@@ -229,6 +229,8 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes avisoEntra { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+  .aviso-in { animation: avisoEntra 0.25s ease-out; }
   .fade-in { animation: fadeIn 0.25s ease-out; }
   .slide-in { animation: slideIn 0.2s ease-out; }
   .spin { animation: spin 0.8s linear infinite; }
@@ -355,6 +357,13 @@ function agoraHoraBR() {
   return new Intl.DateTimeFormat("pt-BR", {
     timeZone: FUSO_BR, hour: "2-digit", minute: "2-digit",
   }).format(new Date());
+}
+
+function formatarHora(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO_BR, hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
 function ehHoje(iso) {
@@ -717,6 +726,10 @@ const ICON_PATHS = {
   "check-circle-2": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   "check-circle": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
   "circle-dot": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/>',
+  "message-circle": '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  "send": '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/>',
+  "bell": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  "bell-ring": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M4 2C2.8 3.7 2 5.7 2 8"/><path d="M22 8c0-2.3-.8-4.3-2-6"/>',
   "clock": '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   "copy": '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   "archive": '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/>',
@@ -1120,7 +1133,7 @@ function Sidebar({ active, setActive, mobileOpen, setMobileOpen, itensNav, usuar
   );
 }
 
-function Topbar({ title, setMobileOpen, usuarioAtual }) {
+function Topbar({ title, setMobileOpen, usuarioAtual, onAbrirChat, totalNaoLidas }) {
   const [agora, setAgora] = useState(new Date());
   useEffect(() => {
     const t = setInterval(() => setAgora(new Date()), 30000);
@@ -1141,6 +1154,18 @@ function Topbar({ title, setMobileOpen, usuarioAtual }) {
         <span style={{ fontSize: 13.5, color: "var(--ink-soft)", fontWeight: 500 }}>{title}</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <button onClick={onAbrirChat} style={{
+          position: "relative", background: "var(--steel-pale)", border: "none", borderRadius: 10,
+          width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
+        }} title="Chat da equipe">
+          <Icon name="message-circle" size={18} color="var(--steel)" />
+          {totalNaoLidas > 0 && (
+            <span style={{
+              position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: "var(--terracotta)",
+              color: "#fff", fontSize: 10.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px",
+            }}>{totalNaoLidas > 99 ? "99+" : totalNaoLidas}</span>
+          )}
+        </button>
         {usuarioAtual && (
           <span style={{ fontSize: 13, color: "var(--ink-soft)" }}>
             Olá, <strong style={{ color: "var(--heading)" }}>{(usuarioAtual.nome || "").split(" ")[0]}</strong>
@@ -2387,8 +2412,11 @@ function GestaoDemandas() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
             <thead>
               <tr style={{ background: "var(--pearl)", textAlign: "left" }}>
-                {["Número", "Data", "Solicitante", "Origem", "Assunto", "Responsável", "Prioridade", "Status", "Prazo", ""].map((h) => (
-                  <th key={h} style={{ padding: "11px 14px", fontSize: 11.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.03em", whiteSpace: "nowrap" }}>{h}</th>
+                {["Número", "Data", "Solicitante", "Origem", "Assunto", "Responsável", "Prioridade", "Status", "Prazo", ""].map((h, i) => (
+                  <th key={h} style={{
+                    padding: "11px 14px", fontSize: 11.5, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.03em", whiteSpace: "nowrap",
+                    ...(i === 9 ? { position: "sticky", right: 0, background: "var(--pearl)", boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.12)" } : {}),
+                  }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -2413,7 +2441,7 @@ function GestaoDemandas() {
                   <td style={{ padding: "10px 14px", whiteSpace: "nowrap", color: d.prazo && d.prazo < hojeISO() && !["Concluída", "Cancelada"].includes(d.status) ? "var(--terracotta)" : "var(--ink)" }}>
                     {d.prazo ? formatarData(d.prazo) : "—"}
                   </td>
-                  <td style={{ padding: "10px 14px", display: "flex", gap: 4 }}>
+                  <td style={{ padding: "10px 14px", display: "flex", gap: 4, position: "sticky", right: 0, background: "var(--paper)", boxShadow: "-6px 0 8px -6px rgba(0,0,0,0.12)" }}>
                     <Button size="sm" variant="ghost" icon="eye" onClick={() => setVerDemanda(d)} />
                     <Button size="sm" variant="ghost" icon="pencil" onClick={() => { setEditando(d); setModalAberto(true); }} />
                     <Button size="sm" variant="ghost" icon="trash-2" onClick={() => setConfirmExcluir(d)} style={{ color: "var(--terracotta)" }} />
@@ -3677,7 +3705,8 @@ function ProdutividadeMedica() {
     return caixaEntradaMedica.length > 0 ? [...caixaEntradaMedica].sort((a, b) => (b.data || "").localeCompare(a.data || ""))[0] : null;
   }, [caixaEntradaMedica]);
 
-  const produtividadeMesAtual = useMemo(() => produtividadeMedica.filter(p => ehMesAtual(p.data) && !p.day_off), [produtividadeMedica]);
+  const mesVisualizado = diaVisualizado.slice(0, 7); // YYYY-MM
+  const produtividadeMesAtual = useMemo(() => produtividadeMedica.filter(p => (p.data || "").slice(0, 7) === mesVisualizado && !p.day_off), [produtividadeMedica, mesVisualizado]);
   const totalAvaliadosMes = useMemo(() => produtividadeMesAtual.reduce((s, p) => s + (p.feitos || 0), 0), [produtividadeMesAtual]);
   const rankingMes = useMemo(() => {
     const map = {};
@@ -3841,7 +3870,7 @@ function ProdutividadeMedica() {
           <Icon name="calendar-days" size={19} color="var(--teal)" />
         </div>
         <div>
-          <div style={{ fontSize: 12, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Total avaliado no mês</div>
+          <div style={{ fontSize: 12, color: "var(--ink-soft)", fontWeight: 600, textTransform: "uppercase" }}>Total avaliado — {nomeMesExtenso(mesVisualizado)}</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: "var(--heading)" }}>{totalAvaliadosMes} <span style={{ fontSize: 13, fontWeight: 400, color: "var(--ink-soft)" }}>processos</span></div>
         </div>
       </Card>
@@ -3849,7 +3878,7 @@ function ProdutividadeMedica() {
       {rankingMes.length > 0 && (
         <Card style={{ marginBottom: 20 }}>
           <h3 style={{ fontFamily: "var(--font-display)", fontSize: 16, color: "var(--heading)", marginTop: 0, marginBottom: 16 }}>
-            Ranking do mês — quem mais avaliou
+            Ranking — quem mais avaliou ({nomeMesExtenso(mesVisualizado)})
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {rankingMes.map((item, i) => (
@@ -4658,6 +4687,270 @@ function EquipeProdutividade() {
   );
 }
 
+/* ============================================================
+   AVISOS FLUTUANTES (notificações em tempo real: mensagens,
+   demandas atribuídas, colegas ficando online)
+============================================================ */
+
+function AvisosFlutuantes({ avisos, onFechar, onClicar }) {
+  if (!avisos || avisos.length === 0) return null;
+  const CORES = {
+    demanda_atribuida: { bg: "var(--terracotta-pale)", fg: "var(--terracotta)", icon: "zap" },
+    mensagem: { bg: "var(--steel-pale)", fg: "var(--steel)", icon: "message-circle" },
+    usuario_online: { bg: "var(--teal-pale)", fg: "var(--teal)", icon: "circle-dot" },
+  };
+  return (
+    <div className="no-print" style={{
+      position: "fixed", top: 78, right: 20, zIndex: 400, display: "flex", flexDirection: "column", gap: 10, maxWidth: 340, width: "calc(100% - 40px)",
+    }}>
+      {avisos.map((a) => {
+        const cor = CORES[a.tipo] || CORES.mensagem;
+        return (
+          <div key={a.id} className="aviso-in" onClick={() => onClicar && onClicar(a)} style={{
+            background: "var(--paper)", border: "1px solid var(--line)", borderLeft: `4px solid ${cor.fg}`,
+            borderRadius: 10, padding: "12px 14px", boxShadow: "0 10px 28px rgba(0,0,0,0.16)", cursor: onClicar ? "pointer" : "default",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: cor.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon name={cor.icon} size={15} color={cor.fg} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>{a.titulo}</div>
+                  {a.mensagem && <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 2 }}>{a.mensagem}</div>}
+                </div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); onFechar(a.id); }} style={{ background: "transparent", border: "none", cursor: "pointer", flexShrink: 0, padding: 2 }}>
+                <Icon name="x" size={14} color="var(--ink-soft)" />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ============================================================
+   CHAT DA EQUIPE
+============================================================ */
+
+function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds, mensagens, naoLidasPorContato, naoLidasTodos, onEnviar, onAbrirConversa, contatoSelecionadoId, setContatoSelecionadoId }) {
+  const [texto, setTexto] = useState("");
+  const scrollRef = useRef(null);
+  const souAdmin = usuarioAtual.role === "admin";
+
+  const contatos = useMemo(() => usuarios.filter(u => u.id !== usuarioAtual.id && u.ativo !== false), [usuarios, usuarioAtual]);
+
+  // Modo supervisão (só Admin): lista de pares de OUTRAS pessoas que já
+  // trocaram mensagem privada entre si (não envolvendo o próprio Admin).
+  const paresSupervisionados = useMemo(() => {
+    if (!souAdmin) return [];
+    const mapa = {};
+    mensagens.forEach(m => {
+      if (!m.destinatario_id) return; // ignora "Todos"
+      if (m.remetente_id === usuarioAtual.id || m.destinatario_id === usuarioAtual.id) return; // já aparece na lista normal
+      const par = [m.remetente_id, m.destinatario_id].sort();
+      const chave = par.join(":");
+      if (!mapa[chave] || m.criado_em > mapa[chave].ultimaEm) {
+        mapa[chave] = { chave, idA: par[0], idB: par[1], ultimaEm: m.criado_em };
+      }
+    });
+    return Object.values(mapa)
+      .map(p => {
+        const uA = usuarios.find(u => u.id === p.idA);
+        const uB = usuarios.find(u => u.id === p.idB);
+        return { ...p, nomeA: uA ? nomeCompletoUsuario(uA) : "?", nomeB: uB ? nomeCompletoUsuario(uB) : "?" };
+      })
+      .sort((a, b) => (b.ultimaEm || "").localeCompare(a.ultimaEm || ""));
+  }, [mensagens, souAdmin, usuarioAtual, usuarios]);
+
+  const parSelecionado = typeof contatoSelecionadoId === "string" && contatoSelecionadoId.startsWith("par:")
+    ? paresSupervisionados.find(p => `par:${p.chave}` === contatoSelecionadoId)
+    : null;
+
+  const mensagensDaConversa = useMemo(() => {
+    if (contatoSelecionadoId === "todos") {
+      return mensagens.filter(m => !m.destinatario_id);
+    }
+    if (parSelecionado) {
+      return mensagens.filter(m =>
+        (m.remetente_id === parSelecionado.idA && m.destinatario_id === parSelecionado.idB) ||
+        (m.remetente_id === parSelecionado.idB && m.destinatario_id === parSelecionado.idA)
+      );
+    }
+    return mensagens.filter(m =>
+      (m.remetente_id === usuarioAtual.id && m.destinatario_id === contatoSelecionadoId) ||
+      (m.remetente_id === contatoSelecionadoId && m.destinatario_id === usuarioAtual.id)
+    );
+  }, [mensagens, contatoSelecionadoId, usuarioAtual, parSelecionado]);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [mensagensDaConversa.length, aberto, contatoSelecionadoId]);
+
+  useEffect(() => {
+    if (aberto && contatoSelecionadoId && !parSelecionado) onAbrirConversa(contatoSelecionadoId);
+  }, [aberto, contatoSelecionadoId]);
+
+  function enviar() {
+    if (!texto.trim() || parSelecionado) return;
+    onEnviar(contatoSelecionadoId === "todos" ? null : contatoSelecionadoId, texto.trim());
+    setTexto("");
+  }
+
+  const contatoAtual = (contatoSelecionadoId === "todos" || parSelecionado) ? null : contatos.find(c => c.id === contatoSelecionadoId);
+
+  if (!aberto) return null;
+
+  return (
+    <>
+      <div className="no-print" onClick={onFechar} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.28)", zIndex: 300 }} />
+      <div className="no-print" style={{
+        position: "fixed", top: 0, right: 0, height: "100vh", width: 460, maxWidth: "100vw", background: "var(--paper)",
+        zIndex: 310, display: "flex", boxShadow: "-8px 0 32px rgba(0,0,0,0.18)",
+      }}>
+        <div style={{ width: 170, borderRight: "1px solid var(--line)", overflowY: "auto", background: "var(--pearl)", flexShrink: 0 }}>
+          <div style={{ padding: "16px 12px 10px", fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Conversas</div>
+          <button
+            onClick={() => setContatoSelecionadoId("todos")}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", border: "none", textAlign: "left", cursor: "pointer",
+              background: contatoSelecionadoId === "todos" ? "var(--steel-pale)" : "transparent",
+            }}
+          >
+            <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--steel)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name="users-round" size={13} color="#fff" />
+            </div>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Todos</span>
+            {naoLidasTodos > 0 && <span style={{ minWidth: 16, height: 16, borderRadius: 8, background: "var(--terracotta)", color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{naoLidasTodos}</span>}
+          </button>
+          {contatos.map(c => {
+            const online = usuariosOnlineIds.includes(c.id);
+            const naoLidas = naoLidasPorContato[c.id] || 0;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setContatoSelecionadoId(c.id)}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", border: "none", textAlign: "left", cursor: "pointer",
+                  background: contatoSelecionadoId === c.id ? "var(--steel-pale)" : "transparent",
+                }}
+              >
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "var(--ink)" }}>
+                    {iniciaisUsuario(c)}
+                  </div>
+                  <span style={{
+                    position: "absolute", bottom: -1, right: -1, width: 9, height: 9, borderRadius: "50%",
+                    background: online ? "var(--teal)" : "#B8BFC6", border: "2px solid var(--pearl)",
+                  }} />
+                </div>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nomeCompletoUsuario(c)}</span>
+                {naoLidas > 0 && <span style={{ minWidth: 16, height: 16, borderRadius: 8, background: "var(--terracotta)", color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{naoLidas}</span>}
+              </button>
+            );
+          })}
+
+          {souAdmin && paresSupervisionados.length > 0 && (
+            <>
+              <div style={{ padding: "16px 12px 8px", fontSize: 11, fontWeight: 700, color: "var(--terracotta)", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 5 }}>
+                <Icon name="eye" size={12} color="var(--terracotta)" /> Supervisão
+              </div>
+              {paresSupervisionados.map(p => (
+                <button
+                  key={p.chave}
+                  onClick={() => setContatoSelecionadoId(`par:${p.chave}`)}
+                  style={{
+                    width: "100%", display: "block", padding: "9px 12px", border: "none", textAlign: "left", cursor: "pointer",
+                    background: contatoSelecionadoId === `par:${p.chave}` ? "var(--terracotta-pale)" : "transparent",
+                  }}
+                >
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink)", lineHeight: 1.3 }}>{p.nomeA}</div>
+                  <div style={{ fontSize: 10, color: "var(--ink-soft)", margin: "1px 0" }}>↕</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--ink)", lineHeight: 1.3 }}>{p.nomeB}</div>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <div style={{ minHeight: 58, borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", flexShrink: 0 }}>
+            <div>
+              {parSelecionado ? (
+                <>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--terracotta)", display: "flex", alignItems: "center", gap: 5 }}>
+                    <Icon name="eye" size={13} color="var(--terracotta)" /> Supervisionando
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "var(--ink-soft)" }}>{parSelecionado.nomeA} ↔ {parSelecionado.nomeB}</div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{contatoSelecionadoId === "todos" ? "Todos" : (contatoAtual ? nomeCompletoUsuario(contatoAtual) : "")}</div>
+                  {contatoSelecionadoId !== "todos" && contatoAtual && (
+                    <div style={{ fontSize: 11, color: usuariosOnlineIds.includes(contatoAtual.id) ? "var(--teal)" : "var(--ink-soft)" }}>
+                      {usuariosOnlineIds.includes(contatoAtual.id) ? "Online" : "Offline"}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <button onClick={onFechar} style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex" }}>
+              <Icon name="x" size={18} color="var(--ink-soft)" />
+            </button>
+          </div>
+
+          <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {mensagensDaConversa.length === 0 ? (
+              <p style={{ fontSize: 13, color: "var(--ink-soft)", textAlign: "center", marginTop: 30 }}>Nenhuma mensagem ainda.{!parSelecionado && " Diga oi!"}</p>
+            ) : mensagensDaConversa.map(m => {
+              const minha = m.remetente_id === usuarioAtual.id;
+              const alinhaDireita = parSelecionado ? m.remetente_id === parSelecionado.idA : minha;
+              return (
+                <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: alinhaDireita ? "flex-end" : "flex-start" }}>
+                  {(contatoSelecionadoId === "todos" || parSelecionado) && (
+                    <span style={{ fontSize: 10.5, color: "var(--ink-soft)", marginBottom: 2, marginLeft: 4 }}>{m.remetente_nome}</span>
+                  )}
+                  <div style={{
+                    maxWidth: "80%", padding: "8px 12px", borderRadius: 14,
+                    borderBottomRightRadius: alinhaDireita ? 3 : 14, borderBottomLeftRadius: alinhaDireita ? 14 : 3,
+                    background: parSelecionado ? "var(--pearl)" : (minha ? "var(--steel)" : "var(--pearl)"),
+                    border: parSelecionado ? "1px solid var(--line)" : "none",
+                    color: (!parSelecionado && minha) ? "#fff" : "var(--ink)",
+                    fontSize: 13.5, lineHeight: 1.4, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                  }}>
+                    {m.conteudo}
+                  </div>
+                  <span style={{ fontSize: 10, color: "var(--ink-soft)", marginTop: 2 }}>{formatarHora(m.criado_em)}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {parSelecionado ? (
+            <div style={{ borderTop: "1px solid var(--line)", padding: 12, textAlign: "center", flexShrink: 0 }}>
+              <span style={{ fontSize: 11.5, color: "var(--ink-soft)" }}>Modo supervisão — somente leitura.</span>
+            </div>
+          ) : (
+            <div style={{ borderTop: "1px solid var(--line)", padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
+              <Textarea
+                rows={1}
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } }}
+                placeholder={contatoSelecionadoId === "todos" ? "Mensagem para todos..." : "Digite uma mensagem..."}
+                style={{ resize: "none", flex: 1 }}
+              />
+              <Button variant="accent" icon="send" onClick={enviar} disabled={!texto.trim()} />
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function AppRoot() {
   const [active, setActive] = useState("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -4675,11 +4968,17 @@ function AppRoot() {
   const [medicos, setMedicos] = useState([]);
   const [caixaEntradaMedica, setCaixaEntradaMedica] = useState([]);
   const [hospitais, setHospitais] = useState([]);
+  const [mensagens, setMensagens] = useState([]);
+  const [notificacoes, setNotificacoes] = useState([]);
+  const [usuariosOnlineIds, setUsuariosOnlineIds] = useState([]);
+  const [chatAberto, setChatAberto] = useState(false);
+  const [contatoSelecionadoId, setContatoSelecionadoId] = useState("todos");
+  const [avisos, setAvisos] = useState([]);
   const [sessaoAuth, setSessaoAuth] = useState(null);
   const [usuarioAtual, setUsuarioAtual] = useState(null);
 
   async function carregarDadosDaEquipe() {
-    const [docs, dem, ates, esc, escMed, reun, prodMed, meds, caixaMed, hosps, perfis] = await Promise.all([
+    const [docs, dem, ates, esc, escMed, reun, prodMed, meds, caixaMed, hosps, msgs, notifs, perfis] = await Promise.all([
       listarRegistros("documentos", "criado_em"),
       listarRegistros("demandas", "data_criacao"),
       listarRegistros("atestados", "criado_em"),
@@ -4690,6 +4989,8 @@ function AppRoot() {
       listarRegistros("medicos", "nome"),
       listarRegistros("caixa_entrada_medica", "data"),
       listarRegistros("hospitais", "nome"),
+      listarRegistros("mensagens", "criado_em"),
+      listarRegistros("notificacoes", "criado_em"),
       listarPerfis(),
     ]);
     setDocumentos(docs);
@@ -4702,6 +5003,8 @@ function AppRoot() {
     setMedicos(meds);
     setCaixaEntradaMedica(caixaMed);
     setHospitais(hosps);
+    setMensagens([...msgs].reverse());
+    setNotificacoes(notifs);
     setUsuarios(perfis);
   }
 
@@ -4746,14 +5049,137 @@ function AppRoot() {
         }
       } else {
         setUsuarioAtual(null);
-        setDocumentos([]); setDemandas([]); setAtestados([]); setEscalas([]); setEscalaMedica([]); setReunioes([]); setProdutividadeMedica([]); setMedicos([]); setCaixaEntradaMedica([]); setHospitais([]); setUsuarios([]);
+        setDocumentos([]); setDemandas([]); setAtestados([]); setEscalas([]); setEscalaMedica([]); setReunioes([]); setProdutividadeMedica([]); setMedicos([]); setCaixaEntradaMedica([]); setHospitais([]); setMensagens([]); setNotificacoes([]); setUsuariosOnlineIds([]); setAvisos([]); setUsuarios([]);
       }
     });
     return () => { inscrito = false; listener.subscription.unsubscribe(); };
   }, []);
 
+  // Chat em tempo real + presença online + notificações do sistema.
+  // Só liga depois que o usuário está logado e o perfil carregado.
+  useEffect(() => {
+    if (!usuarioAtual) return;
+    let ativo = true;
+
+    function adicionarAviso(aviso) {
+      const id = Date.now() + Math.random();
+      setAvisos((prev) => [...prev, { ...aviso, id }]);
+      // Sem timeout — o aviso fica na tela até a pessoa clicar nele
+      // (que já leva pra ação) ou fechar manualmente no "x".
+    }
+
+    const canalPresenca = supabaseClient.channel("presenca-equipe", {
+      config: { presence: { key: usuarioAtual.id } },
+    });
+    canalPresenca
+      .on("presence", { event: "sync" }, () => {
+        if (!ativo) return;
+        const estado = canalPresenca.presenceState();
+        setUsuariosOnlineIds(Object.keys(estado));
+      })
+      .on("presence", { event: "join" }, ({ key, newPresences }) => {
+        if (!ativo || key === usuarioAtual.id) return;
+        const nome = newPresences && newPresences[0] ? newPresences[0].nome : "Alguém";
+        adicionarAviso({ tipo: "usuario_online", titulo: `${nome} ficou online` });
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED" && ativo) {
+          await canalPresenca.track({ nome: nomeCompletoUsuario(usuarioAtual), online_at: new Date().toISOString() });
+        }
+      });
+
+    const canalMensagens = supabaseClient
+      .channel("mensagens-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "mensagens" }, (payload) => {
+        if (!ativo) return;
+        const nova = payload.new;
+        setMensagens((prev) => prev.some(m => m.id === nova.id) ? prev : [...prev, nova]);
+        const paraMim = nova.destinatario_id === usuarioAtual.id;
+        const paraTodos = !nova.destinatario_id;
+        const deOutraPessoa = nova.remetente_id !== usuarioAtual.id;
+        if (deOutraPessoa && (paraMim || paraTodos)) {
+          adicionarAviso({
+            tipo: "mensagem", titulo: `Mensagem de ${nova.remetente_nome}`,
+            mensagem: nova.conteudo.length > 80 ? nova.conteudo.slice(0, 80) + "…" : nova.conteudo,
+            destinoChat: nova.destinatario_id ? nova.remetente_id : "todos",
+          });
+        }
+      })
+      .subscribe();
+
+    const canalNotificacoes = supabaseClient
+      .channel("notificacoes-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notificacoes", filter: `usuario_id=eq.${usuarioAtual.id}` }, (payload) => {
+        if (!ativo) return;
+        const nova = payload.new;
+        setNotificacoes((prev) => prev.some(n => n.id === nova.id) ? prev : [nova, ...prev]);
+        adicionarAviso({ tipo: nova.tipo, titulo: nova.titulo, mensagem: nova.mensagem });
+      })
+      .subscribe();
+
+    return () => {
+      ativo = false;
+      supabaseClient.removeChannel(canalPresenca);
+      supabaseClient.removeChannel(canalMensagens);
+      supabaseClient.removeChannel(canalNotificacoes);
+    };
+  }, [usuarioAtual && usuarioAtual.id]);
+
+  function fecharAviso(id) {
+    setAvisos((prev) => prev.filter((a) => a.id !== id));
+  }
+
+  function clicarAviso(aviso) {
+    fecharAviso(aviso.id);
+    if (aviso.tipo === "mensagem") {
+      setContatoSelecionadoId(aviso.destinoChat || "todos");
+      setChatAberto(true);
+    } else if (aviso.tipo === "demanda_atribuida") {
+      setActive("demandas");
+    }
+  }
+
   function logout() {
     sairDaConta();
+  }
+
+  /* ---------- CRUD: chat da equipe ---------- */
+  async function enviarMensagem(destinatarioId, conteudo) {
+    const novo = await inserirRegistro("mensagens", {
+      remetente_id: usuarioAtual.id,
+      remetente_nome: nomeCompletoUsuario(usuarioAtual),
+      destinatario_id: destinatarioId || null,
+      conteudo,
+    });
+    setMensagens((prev) => prev.some(m => m.id === novo.id) ? prev : [...prev, novo]);
+  }
+
+  async function marcarConversaComoLida(contatoId) {
+    if (contatoId === "todos") {
+      await atualizarPerfil(usuarioAtual.id, { ultimo_lido_chat_todos: new Date().toISOString() });
+      setUsuarioAtual((prev) => prev ? { ...prev, ultimo_lido_chat_todos: new Date().toISOString() } : prev);
+      return;
+    }
+    const idsParaMarcar = mensagens
+      .filter(m => m.remetente_id === contatoId && m.destinatario_id === usuarioAtual.id && !m.lida)
+      .map(m => m.id);
+    if (idsParaMarcar.length === 0) return;
+    await Promise.all(idsParaMarcar.map(id => atualizarRegistro("mensagens", id, { lida: true })));
+    setMensagens((prev) => prev.map(m => idsParaMarcar.includes(m.id) ? { ...m, lida: true } : m));
+  }
+
+  /* ---------- Notificações do sistema (ex.: demanda atribuída) ---------- */
+  async function criarNotificacaoParaUsuario({ usuarioId, tipo, titulo, mensagem, referenciaId }) {
+    if (!usuarioId || usuarioId === usuarioAtual.id) return;
+    try {
+      await inserirRegistro("notificacoes", {
+        usuario_id: usuarioId, tipo, titulo, mensagem: mensagem || null,
+        referencia_id: referenciaId ? String(referenciaId) : null,
+        remetente_nome: nomeCompletoUsuario(usuarioAtual),
+      });
+    } catch (e) {
+      console.error("Não foi possível criar notificação:", e);
+    }
   }
 
   /* ---------- CRUD: documentos (Base Normativa) ---------- */
@@ -4802,10 +5228,33 @@ function AppRoot() {
     const numero = gerarNumeroDemanda(total + 1);
     const novo = await inserirRegistro("demandas", { ...sanitizarDemanda(form), numero, data_criacao: new Date().toISOString() });
     setDemandas((prev) => [novo, ...prev]);
+    if (novo.responsavel) {
+      const usuarioResponsavel = usuarios.find(u => nomeCompletoUsuario(u) === novo.responsavel);
+      if (usuarioResponsavel) {
+        criarNotificacaoParaUsuario({
+          usuarioId: usuarioResponsavel.id, tipo: "demanda_atribuida",
+          titulo: "Demanda atribuída para você",
+          mensagem: `Por ${nomeCompletoUsuario(usuarioAtual)} — ${novo.assunto || novo.numero}`,
+          referenciaId: novo.id,
+        });
+      }
+    }
   }
   async function atualizarDemanda(id, form) {
+    const anterior = demandas.find(d => d.id === id);
     const atualizado = await atualizarRegistro("demandas", id, sanitizarDemanda(form));
     setDemandas((prev) => prev.map(d => d.id === id ? atualizado : d));
+    if (atualizado.responsavel && atualizado.responsavel !== (anterior && anterior.responsavel)) {
+      const usuarioResponsavel = usuarios.find(u => nomeCompletoUsuario(u) === atualizado.responsavel);
+      if (usuarioResponsavel) {
+        criarNotificacaoParaUsuario({
+          usuarioId: usuarioResponsavel.id, tipo: "demanda_atribuida",
+          titulo: "Demanda atribuída para você",
+          mensagem: `Por ${nomeCompletoUsuario(usuarioAtual)} — ${atualizado.assunto || atualizado.numero}`,
+          referenciaId: atualizado.id,
+        });
+      }
+    }
   }
   async function excluirDemanda(id) {
     await excluirRegistro("demandas", id);
@@ -5019,13 +5468,23 @@ function AppRoot() {
 
   const itensNav = NAV_ITEMS.filter(item => !item.adminOnly || usuarioAtual.role === "admin");
 
+  const naoLidasPorContato = {};
+  mensagens.forEach(m => {
+    if (m.destinatario_id === usuarioAtual.id && !m.lida) {
+      naoLidasPorContato[m.remetente_id] = (naoLidasPorContato[m.remetente_id] || 0) + 1;
+    }
+  });
+  const ultimoLidoTodos = usuarioAtual.ultimo_lido_chat_todos || "1970-01-01T00:00:00Z";
+  const naoLidasTodos = mensagens.filter(m => !m.destinatario_id && m.remetente_id !== usuarioAtual.id && m.criado_em > ultimoLidoTodos).length;
+  const totalNaoLidas = Object.values(naoLidasPorContato).reduce((s, n) => s + n, 0) + naoLidasTodos;
+
   return (
     <AppContext.Provider value={ctxValue}>
       <ToastProvider>
         <div style={{ display: "flex", minHeight: "100vh" }}>
           <Sidebar active={active} setActive={setActive} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} itensNav={itensNav} usuarioAtual={usuarioAtual} onLogout={logout} />
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <Topbar title={navTitle} setMobileOpen={setMobileOpen} usuarioAtual={usuarioAtual} />
+            <Topbar title={navTitle} setMobileOpen={setMobileOpen} usuarioAtual={usuarioAtual} onAbrirChat={() => setChatAberto(true)} totalNaoLidas={totalNaoLidas} />
             <FraseMotivacional compacta />
             <main id="main-content-area" style={{ flex: 1, padding: "28px 32px", maxWidth: 1280, width: "100%", margin: "0 auto" }}>
               {active === "dashboard" && <Dashboard setActive={setActive} />}
@@ -5044,6 +5503,21 @@ function AppRoot() {
             </main>
           </div>
         </div>
+        <ChatPanel
+          aberto={chatAberto}
+          onFechar={() => setChatAberto(false)}
+          usuarios={usuarios}
+          usuarioAtual={usuarioAtual}
+          usuariosOnlineIds={usuariosOnlineIds}
+          mensagens={mensagens}
+          naoLidasPorContato={naoLidasPorContato}
+          naoLidasTodos={naoLidasTodos}
+          onEnviar={enviarMensagem}
+          onAbrirConversa={marcarConversaComoLida}
+          contatoSelecionadoId={contatoSelecionadoId}
+          setContatoSelecionadoId={setContatoSelecionadoId}
+        />
+        <AvisosFlutuantes avisos={avisos} onFechar={fecharAviso} onClicar={clicarAviso} />
       </ToastProvider>
     </AppContext.Provider>
   );
