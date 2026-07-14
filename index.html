@@ -760,6 +760,7 @@ const ICON_PATHS = {
   "hospital": '<path d="M12 6v4"/><path d="M14 8h-4"/><path d="M2 22h20"/><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/><path d="M6 12H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h2"/><path d="M18 12h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-2"/><path d="M10 18h4"/>',
   "cake": '<path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2 1 3.5 1 2-1 3.5-1 2 1 3.5 1 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/><path d="M12 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/><path d="M17 4a1 1 0 0 0 2 0c0-.7-.7-1-1-1.5-.3.5-1 .8-1 1.5Z"/>',
   "id-card": '<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="10" r="2"/><path d="M2 16c0-1.5 1.5-3 4-3s4 1.5 4 3"/><line x1="14" y1="8" x2="18" y2="8"/><line x1="14" y1="12" x2="18" y2="12"/>',
+  "user-check": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>',
   "trash-2": '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
   "layout-dashboard": '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
   "flask-conical": '<path d="M10 2v6.5L5.5 17a2 2 0 0 0 1.7 3h9.6a2 2 0 0 0 1.7-3L14 8.5V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
@@ -2231,21 +2232,31 @@ function FormularioDemanda({ demanda, onSalvar, onCancelar, usuarioAtual }) {
           <Badge bg="var(--steel-pale)" fg="var(--steel)">{form.numero}</Badge>
         </div>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Data"><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></Field>
-        <Field label="Hora"><Input type="time" value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} /></Field>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        <Field label="Solicitante" required><Input value={form.solicitante} onChange={(e) => setForm({ ...form, solicitante: e.target.value })} placeholder="Nome de quem solicitou" /></Field>
-        <Field label="Responsável" hint="Atribua a demanda a alguém da equipe.">
-          <Select value={form.responsavel} onChange={(e) => setForm({ ...form, responsavel: e.target.value })}>
+
+      <div style={{
+        padding: "14px 16px", borderRadius: 10, background: "var(--steel-pale)", border: "1px solid var(--steel)",
+        marginBottom: 18, display: "flex", alignItems: "center", gap: 12,
+      }}>
+        <Icon name="user-check" size={20} color="var(--steel)" style={{ flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--steel)", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: 6 }}>
+            Atribuir demanda para
+          </div>
+          <Select value={form.responsavel} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} style={{ background: "#fff" }}>
             <option value="">Sem responsável definido</option>
             {usuarios.filter(u => u.ativo !== false).map(u => (
               <option key={u.id} value={nomeCompletoUsuario(u)}>{nomeCompletoUsuario(u)}</option>
             ))}
           </Select>
-        </Field>
+          <div style={{ fontSize: 11, color: "var(--steel)", marginTop: 6 }}>A pessoa recebe um aviso na tela na hora.</div>
+        </div>
       </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <Field label="Data"><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></Field>
+        <Field label="Hora"><Input type="time" value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} /></Field>
+      </div>
+      <Field label="Solicitante" required><Input value={form.solicitante} onChange={(e) => setForm({ ...form, solicitante: e.target.value })} placeholder="Nome de quem solicitou" /></Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
         <Field label="Origem">
           <Select value={form.origem} onChange={(e) => setForm({ ...form, origem: e.target.value })}>
@@ -2314,20 +2325,24 @@ function GestaoDemandas() {
   const [filtroOrigem, setFiltroOrigem] = useState("Todas");
   const [filtroPrioridade, setFiltroPrioridade] = useState("Todas");
   const [mostrarArquivadas, setMostrarArquivadas] = useState(false);
+  const [apenasMinhas, setApenasMinhas] = useState(false);
 
+  const meuNomeCompleto = usuarioAtual ? nomeCompletoUsuario(usuarioAtual) : "";
   const ehArquivada = (d) => d.status === "Concluída" || d.status === "Cancelada";
   const totalArquivadas = useMemo(() => demandas.filter(ehArquivada).length, [demandas]);
+  const totalMinhas = useMemo(() => demandas.filter(d => d.responsavel === meuNomeCompleto).length, [demandas, meuNomeCompleto]);
 
   const filtradas = useMemo(() => {
     return demandas.filter(d => {
       if (!mostrarArquivadas && ehArquivada(d)) return false;
+      if (apenasMinhas && d.responsavel !== meuNomeCompleto) return false;
       const matchBusca = !busca.trim() || `${d.assunto} ${d.solicitante} ${d.numero} ${d.responsavel}`.toLowerCase().includes(busca.toLowerCase());
       const matchStatus = filtroStatus === "Todos" || d.status === filtroStatus;
       const matchOrigem = filtroOrigem === "Todas" || d.origem === filtroOrigem;
       const matchPrioridade = filtroPrioridade === "Todas" || d.prioridade === filtroPrioridade;
       return matchBusca && matchStatus && matchOrigem && matchPrioridade;
     }).sort((a, b) => (b.data_criacao || "").localeCompare(a.data_criacao || ""));
-  }, [demandas, busca, filtroStatus, filtroOrigem, filtroPrioridade, mostrarArquivadas]);
+  }, [demandas, busca, filtroStatus, filtroOrigem, filtroPrioridade, mostrarArquivadas, apenasMinhas, meuNomeCompleto]);
 
   async function salvar(form) {
     if (editando) {
@@ -2387,6 +2402,23 @@ function GestaoDemandas() {
           {PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
         </Select>
         <button
+          onClick={() => setApenasMinhas((v) => !v)}
+          title="Mostra só as demandas atribuídas a você."
+          style={{
+            display: "flex", alignItems: "center", gap: 7, padding: "0 14px", borderRadius: 8,
+            border: "1px solid " + (apenasMinhas ? "var(--steel)" : "var(--line)"),
+            background: apenasMinhas ? "var(--steel-pale)" : "var(--paper)",
+            fontSize: 13, fontWeight: 600, color: apenasMinhas ? "var(--steel)" : "var(--ink-soft)",
+            flexShrink: 0,
+          }}
+        >
+          <Icon name="user-check" size={14} />
+          Atribuídas a mim
+          {totalMinhas > 0 && (
+            <Badge bg={apenasMinhas ? "var(--steel)" : "var(--pearl)"} fg={apenasMinhas ? "#fff" : "var(--ink-soft)"}>{totalMinhas}</Badge>
+          )}
+        </button>
+        <button
           onClick={() => setMostrarArquivadas((v) => !v)}
           title="Demandas concluídas ou canceladas saem da lista automaticamente. Clique para ver/ocultar."
           style={{
@@ -2414,9 +2446,11 @@ function GestaoDemandas() {
           <EmptyState
             icon="search-x"
             title="Nenhum resultado"
-            subtitle={!mostrarArquivadas && totalArquivadas > 0
-              ? `Todas as demandas que batem com esse filtro estão arquivadas (concluídas/canceladas). Clique em "Mostrar arquivadas" acima para vê-las.`
-              : "Ajuste os filtros ou o termo de busca."}
+            subtitle={apenasMinhas
+              ? `Nenhuma demanda atribuída a você por enquanto${!mostrarArquivadas && totalArquivadas > 0 ? " (ou elas já foram concluídas/arquivadas)" : ""}.`
+              : (!mostrarArquivadas && totalArquivadas > 0
+                ? `Todas as demandas que batem com esse filtro estão arquivadas (concluídas/canceladas). Clique em "Mostrar arquivadas" acima para vê-las.`
+                : "Ajuste os filtros ou o termo de busca.")}
           />
         </Card>
       ) : (
@@ -4710,6 +4744,7 @@ function AvisosFlutuantes({ avisos, onFechar, onClicar }) {
     demanda_atribuida: { bg: "var(--terracotta-pale)", fg: "var(--terracotta)", icon: "zap" },
     mensagem: { bg: "var(--steel-pale)", fg: "var(--steel)", icon: "message-circle" },
     usuario_online: { bg: "var(--teal-pale)", fg: "var(--teal)", icon: "circle-dot" },
+    erro_notificacao: { bg: "var(--terracotta-pale)", fg: "var(--terracotta)", icon: "alert-triangle" },
   };
   return (
     <div className="no-print" style={{
@@ -4747,9 +4782,14 @@ function AvisosFlutuantes({ avisos, onFechar, onClicar }) {
    CHAT DA EQUIPE
 ============================================================ */
 
-function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds, mensagens, naoLidasPorContato, naoLidasTodos, onEnviar, onAbrirConversa, contatoSelecionadoId, setContatoSelecionadoId }) {
+function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds, mensagens, naoLidasPorContato, naoLidasTodos, onEnviar, onExcluir, onAbrirConversa, contatoSelecionadoId, setContatoSelecionadoId }) {
   const [texto, setTexto] = useState("");
+  const [confirmExcluirMsg, setConfirmExcluirMsg] = useState(null);
   const scrollRef = useRef(null);
+  const canalDigitandoRef = useRef(null);
+  const digitandoTimeoutRef = useRef(null);
+  const ultimoEnvioDigitandoRef = useRef(0);
+  const [quemDigitando, setQuemDigitando] = useState(null);
   const souAdmin = usuarioAtual.role === "admin";
 
   const contatos = useMemo(() => usuarios.filter(u => u.id !== usuarioAtual.id && u.ativo !== false), [usuarios, usuarioAtual]);
@@ -4805,10 +4845,53 @@ function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds
     if (aberto && contatoSelecionadoId && !parSelecionado) onAbrirConversa(contatoSelecionadoId);
   }, [aberto, contatoSelecionadoId]);
 
+  // Canal de "digitando..." — broadcast em tempo real, não fica salvo em lugar nenhum.
+  useEffect(() => {
+    if (!aberto) return;
+    const canal = supabaseClient.channel("chat-digitando", { config: { broadcast: { self: false } } });
+    canal
+      .on("broadcast", { event: "digitando" }, ({ payload }) => {
+        if (!payload || payload.de === usuarioAtual.id) return;
+        const relevante = contatoSelecionadoId === "todos"
+          ? payload.para === null
+          : (payload.de === contatoSelecionadoId && payload.para === usuarioAtual.id);
+        if (!relevante) return;
+        setQuemDigitando(payload.nome);
+        clearTimeout(digitandoTimeoutRef.current);
+        digitandoTimeoutRef.current = setTimeout(() => setQuemDigitando(null), 3000);
+      })
+      .subscribe();
+    canalDigitandoRef.current = canal;
+    return () => {
+      supabaseClient.removeChannel(canal);
+      canalDigitandoRef.current = null;
+      clearTimeout(digitandoTimeoutRef.current);
+    };
+  }, [aberto, contatoSelecionadoId, usuarioAtual.id]);
+
+  useEffect(() => { setQuemDigitando(null); }, [contatoSelecionadoId]);
+
+  function aoMudarTexto(e) {
+    setTexto(e.target.value);
+    if (parSelecionado || !canalDigitandoRef.current) return;
+    const agora = Date.now();
+    if (agora - ultimoEnvioDigitandoRef.current < 1500) return;
+    ultimoEnvioDigitandoRef.current = agora;
+    canalDigitandoRef.current.send({
+      type: "broadcast", event: "digitando",
+      payload: {
+        de: usuarioAtual.id,
+        nome: (nomeCompletoUsuario(usuarioAtual) || "").split(" ")[0],
+        para: contatoSelecionadoId === "todos" ? null : contatoSelecionadoId,
+      },
+    });
+  }
+
   function enviar() {
     if (!texto.trim() || parSelecionado) return;
     onEnviar(contatoSelecionadoId === "todos" ? null : contatoSelecionadoId, texto.trim());
     setTexto("");
+    setQuemDigitando(null);
   }
 
   const contatoAtual = (contatoSelecionadoId === "todos" || parSelecionado) ? null : contatos.find(c => c.id === contatoSelecionadoId);
@@ -4900,7 +4983,9 @@ function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds
               ) : (
                 <>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{contatoSelecionadoId === "todos" ? "Todos" : (contatoAtual ? nomeCompletoUsuario(contatoAtual) : "")}</div>
-                  {contatoSelecionadoId !== "todos" && contatoAtual && (
+                  {quemDigitando ? (
+                    <div style={{ fontSize: 11, color: "var(--steel)", fontStyle: "italic" }}>{quemDigitando} está digitando…</div>
+                  ) : contatoSelecionadoId !== "todos" && contatoAtual && (
                     <div style={{ fontSize: 11, color: usuariosOnlineIds.includes(contatoAtual.id) ? "var(--teal)" : "var(--ink-soft)" }}>
                       {usuariosOnlineIds.includes(contatoAtual.id) ? "Online" : "Offline"}
                     </div>
@@ -4924,15 +5009,22 @@ function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds
                   {(contatoSelecionadoId === "todos" || parSelecionado) && (
                     <span style={{ fontSize: 10.5, color: "var(--ink-soft)", marginBottom: 2, marginLeft: 4 }}>{m.remetente_nome}</span>
                   )}
-                  <div style={{
-                    maxWidth: "80%", padding: "8px 12px", borderRadius: 14,
-                    borderBottomRightRadius: alinhaDireita ? 3 : 14, borderBottomLeftRadius: alinhaDireita ? 14 : 3,
-                    background: parSelecionado ? "var(--pearl)" : (minha ? "var(--steel)" : "var(--pearl)"),
-                    border: parSelecionado ? "1px solid var(--line)" : "none",
-                    color: (!parSelecionado && minha) ? "#fff" : "var(--ink)",
-                    fontSize: 13.5, lineHeight: 1.4, whiteSpace: "pre-wrap", wordBreak: "break-word",
-                  }}>
-                    {m.conteudo}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, flexDirection: alinhaDireita ? "row-reverse" : "row" }}>
+                    <div style={{
+                      maxWidth: "80%", padding: "8px 12px", borderRadius: 14,
+                      borderBottomRightRadius: alinhaDireita ? 3 : 14, borderBottomLeftRadius: alinhaDireita ? 14 : 3,
+                      background: parSelecionado ? "var(--pearl)" : (minha ? "var(--steel)" : "var(--pearl)"),
+                      border: parSelecionado ? "1px solid var(--line)" : "none",
+                      color: (!parSelecionado && minha) ? "#fff" : "var(--ink)",
+                      fontSize: 13.5, lineHeight: 1.4, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                    }}>
+                      {m.conteudo}
+                    </div>
+                    {minha && !parSelecionado && (
+                      <button onClick={() => setConfirmExcluirMsg(m)} title="Apagar mensagem" style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", padding: 3, flexShrink: 0 }}>
+                        <Icon name="trash-2" size={13} color="var(--ink-soft)" />
+                      </button>
+                    )}
                   </div>
                   <span style={{ fontSize: 10, color: "var(--ink-soft)", marginTop: 2 }}>{formatarHora(m.criado_em)}</span>
                 </div>
@@ -4949,7 +5041,7 @@ function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds
               <Textarea
                 rows={1}
                 value={texto}
-                onChange={(e) => setTexto(e.target.value)}
+                onChange={aoMudarTexto}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } }}
                 placeholder={contatoSelecionadoId === "todos" ? "Mensagem para todos..." : "Digite uma mensagem..."}
                 style={{ resize: "none", flex: 1 }}
@@ -4959,6 +5051,18 @@ function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds
           )}
         </div>
       </div>
+
+      <Modal open={!!confirmExcluirMsg} onClose={() => setConfirmExcluirMsg(null)} title="Apagar mensagem" width={380}>
+        {confirmExcluirMsg && (
+          <div>
+            <p style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.5 }}>Apagar esta mensagem? Isso não pode ser desfeito.</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+              <Button variant="secondary" onClick={() => setConfirmExcluirMsg(null)}>Cancelar</Button>
+              <Button variant="danger" icon="trash-2" onClick={() => { onExcluir(confirmExcluirMsg.id); setConfirmExcluirMsg(null); }}>Apagar</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }
@@ -5185,6 +5289,11 @@ function AppRoot() {
     setMensagens((prev) => prev.some(m => m.id === novo.id) ? prev : [...prev, novo]);
   }
 
+  async function excluirMensagem(id) {
+    await excluirRegistro("mensagens", id);
+    setMensagens((prev) => prev.filter(m => m.id !== id));
+  }
+
   async function marcarConversaComoLida(contatoId) {
     if (contatoId === "todos") {
       await atualizarPerfil(usuarioAtual.id, { ultimo_lido_chat_todos: new Date().toISOString() });
@@ -5210,6 +5319,11 @@ function AppRoot() {
       });
     } catch (e) {
       console.error("Não foi possível criar notificação:", e);
+      setAvisos((prev) => [...prev, {
+        id: Date.now() + Math.random(), tipo: "erro_notificacao",
+        titulo: "Não foi possível enviar a notificação",
+        mensagem: e.message || "Erro desconhecido — veja o Console (F12) para detalhes.",
+      }]);
     }
   }
 
@@ -5544,6 +5658,7 @@ function AppRoot() {
           naoLidasPorContato={naoLidasPorContato}
           naoLidasTodos={naoLidasTodos}
           onEnviar={enviarMensagem}
+          onExcluir={excluirMensagem}
           onAbrirConversa={marcarConversaComoLida}
           contatoSelecionadoId={contatoSelecionadoId}
           setContatoSelecionadoId={setContatoSelecionadoId}
