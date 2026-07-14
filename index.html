@@ -371,6 +371,35 @@ function formatarHora(iso) {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO_BR, hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
+// Som de notificação — gerado direto no navegador (dois tons curtos, tipo
+// "ding"), sem precisar de nenhum arquivo de áudio.
+let __audioCtxNotificacao = null;
+function tocarSomNotificacao() {
+  try {
+    if (!__audioCtxNotificacao) {
+      __audioCtxNotificacao = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ctx = __audioCtxNotificacao;
+    if (ctx.state === "suspended") ctx.resume();
+    const agora = ctx.currentTime;
+    [{ freq: 880, inicio: 0, dur: 0.13 }, { freq: 1175, inicio: 0.1, dur: 0.2 }].forEach(({ freq, inicio, dur }) => {
+      const osc = ctx.createOscillator();
+      const ganho = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, agora + inicio);
+      ganho.gain.setValueAtTime(0, agora + inicio);
+      ganho.gain.linearRampToValueAtTime(0.18, agora + inicio + 0.015);
+      ganho.gain.exponentialRampToValueAtTime(0.001, agora + inicio + dur);
+      osc.connect(ganho);
+      ganho.connect(ctx.destination);
+      osc.start(agora + inicio);
+      osc.stop(agora + inicio + dur + 0.02);
+    });
+  } catch (e) {
+    console.error("Não foi possível tocar o som de notificação:", e);
+  }
+}
+
 function ehHoje(iso) {
   if (!iso) return false;
   return iso.slice(0, 10) === hojeISO();
@@ -564,6 +593,17 @@ async function inserirRegistro(tabela, registro) {
   const { data, error } = await supabaseClient.from(tabela).insert([registro]).select().single();
   if (error) throw error;
   return data;
+}
+
+// Igual a inserirRegistro, mas sem pedir a linha de volta depois de criar.
+// Necessário quando quem está inserindo não tem permissão de LEITURA sobre
+// a linha que acabou de criar (ex: notificação criada para outra pessoa —
+// a política de leitura só deixa cada um ler as próprias notificações).
+// Sem isso, o Supabase acusa erro de "row-level security" mesmo a inserção
+// tendo funcionado, porque ele tenta reler a linha pra confirmar.
+async function inserirRegistroSemRetorno(tabela, registro) {
+  const { error } = await supabaseClient.from(tabela).insert([registro]);
+  if (error) throw error;
 }
 
 async function atualizarRegistro(tabela, id, campos) {
@@ -5228,6 +5268,7 @@ function AppRoot() {
         const paraTodos = !nova.destinatario_id;
         const deOutraPessoa = nova.remetente_id !== usuarioAtual.id;
         if (deOutraPessoa && (paraMim || paraTodos)) {
+          tocarSomNotificacao();
           adicionarAviso({
             tipo: "mensagem", titulo: `Mensagem de ${nova.remetente_nome}`,
             mensagem: nova.conteudo.length > 80 ? nova.conteudo.slice(0, 80) + "…" : nova.conteudo,
@@ -5243,6 +5284,7 @@ function AppRoot() {
         if (!ativo) return;
         const nova = payload.new;
         setNotificacoes((prev) => prev.some(n => n.id === nova.id) ? prev : [nova, ...prev]);
+        tocarSomNotificacao();
         adicionarAviso({ tipo: nova.tipo, titulo: nova.titulo, mensagem: nova.mensagem, notificacaoId: nova.id });
       })
       .subscribe();
@@ -5312,7 +5354,7 @@ function AppRoot() {
   async function criarNotificacaoParaUsuario({ usuarioId, tipo, titulo, mensagem, referenciaId }) {
     if (!usuarioId || usuarioId === usuarioAtual.id) return;
     try {
-      await inserirRegistro("notificacoes", {
+      await inserirRegistroSemRetorno("notificacoes", {
         usuario_id: usuarioId, tipo, titulo, mensagem: mensagem || null,
         referencia_id: referenciaId ? String(referenciaId) : null,
         remetente_nome: nomeCompletoUsuario(usuarioAtual),
