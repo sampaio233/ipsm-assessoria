@@ -371,6 +371,21 @@ function formatarHora(iso) {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: FUSO_BR, hour: "2-digit", minute: "2-digit" }).format(d);
 }
 
+function tempoRelativo(iso) {
+  if (!iso) return "sem registro";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "sem registro";
+  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diffMin < 1) return "agora mesmo";
+  if (diffMin < 60) return `há ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `há ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD === 1) return "há 1 dia";
+  if (diffD < 30) return `há ${diffD} dias`;
+  return `em ${formatarData(iso)}`;
+}
+
 // Som de notificação — gerado direto no navegador (dois tons curtos, tipo
 // "ding"), sem precisar de nenhum arquivo de áudio.
 let __audioCtxNotificacao = null;
@@ -1095,7 +1110,7 @@ const NAV_ITEMS = [
   { id: "relatorios", label: "Relatórios", icon: "file-bar-chart-2" },
 ];
 
-function Sidebar({ active, setActive, mobileOpen, setMobileOpen, itensNav, usuarioAtual, onLogout }) {
+function Sidebar({ active, setActive, mobileOpen, setMobileOpen, itensNav, usuarioAtual, onLogout, usuarios, usuariosOnlineIds }) {
   const itens = itensNav || NAV_ITEMS;
   return (
     <>
@@ -1176,6 +1191,11 @@ function Sidebar({ active, setActive, mobileOpen, setMobileOpen, itensNav, usuar
           })}
         </nav>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          {usuarios && usuariosOnlineIds && (
+            <div style={{ padding: "14px 20px 4px" }}>
+              <PainelOnline usuarios={usuarios} usuarioAtual={usuarioAtual} usuariosOnlineIds={usuariosOnlineIds} compacto />
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "14px 20px", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
             <Icon name="globe" size={12} />
             Dados sincronizados com a equipe (Supabase)
@@ -4843,6 +4863,52 @@ function AvisosFlutuantes({ avisos, onFechar, onClicar }) {
    CHAT DA EQUIPE
 ============================================================ */
 
+/* ============================================================
+   PAINEL "QUEM ESTÁ ONLINE"
+   Mostra quem está online agora e, para quem não está, há quanto
+   tempo foi visto pela última vez. Usado na barra lateral e no chat.
+============================================================ */
+
+function PainelOnline({ usuarios, usuarioAtual, usuariosOnlineIds, compacto = false }) {
+  const lista = useMemo(() => {
+    return usuarios
+      .filter(u => u.id !== usuarioAtual.id && u.ativo !== false)
+      .map(u => ({ ...u, online: usuariosOnlineIds.includes(u.id) }))
+      .sort((a, b) => {
+        if (a.online !== b.online) return a.online ? -1 : 1;
+        return (b.ultima_atividade || "").localeCompare(a.ultima_atividade || "");
+      });
+  }, [usuarios, usuarioAtual, usuariosOnlineIds]);
+
+  if (lista.length === 0) return null;
+
+  return (
+    <div>
+      {!compacto && (
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+          Quem está online
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: compacto ? 6 : 8 }}>
+        {lista.map(u => (
+          <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+              background: u.online ? "var(--teal)" : (compacto ? "rgba(255,255,255,0.25)" : "#B8BFC6"),
+            }} />
+            <span style={{ fontSize: compacto ? 12 : 13, color: compacto ? "rgba(255,255,255,0.85)" : "var(--ink)", fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {nomeCompletoUsuario(u)}
+            </span>
+            <span style={{ fontSize: compacto ? 10.5 : 11.5, color: compacto ? "rgba(255,255,255,0.45)" : "var(--ink-soft)", flexShrink: 0 }}>
+              {u.online ? "online" : tempoRelativo(u.ultima_atividade)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds, mensagens, naoLidasPorContato, naoLidasTodos, onEnviar, onExcluir, onAbrirConversa, contatoSelecionadoId, setContatoSelecionadoId }) {
   const toast = useToast();
   const [texto, setTexto] = useState("");
@@ -5044,6 +5110,10 @@ function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds
               ))}
             </>
           )}
+
+          <div style={{ padding: "16px 12px 10px", borderTop: "1px solid var(--line)", marginTop: 8 }}>
+            <PainelOnline usuarios={usuarios} usuarioAtual={usuarioAtual} usuariosOnlineIds={usuariosOnlineIds} />
+          </div>
         </div>
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
@@ -5296,6 +5366,15 @@ function AppRoot() {
     const canalPresenca = supabaseClient.channel("presenca-equipe", {
       config: { presence: { key: usuarioAtual.id } },
     });
+
+    // Atualiza "última vez visto" no meu próprio perfil — na hora que fico
+    // online, e depois de tempos em tempos enquanto a tela estiver aberta.
+    // É isso que permite mostrar "há X min" pra quem não está online agora.
+    function atualizarUltimaAtividade() {
+      atualizarPerfil(usuarioAtual.id, { ultima_atividade: new Date().toISOString() }).catch(() => {});
+    }
+    const intervaloAtividade = setInterval(atualizarUltimaAtividade, 45000);
+
     canalPresenca
       .on("presence", { event: "sync" }, () => {
         if (!ativo) return;
@@ -5310,6 +5389,7 @@ function AppRoot() {
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED" && ativo) {
           await canalPresenca.track({ nome: nomeCompletoUsuario(usuarioAtual), online_at: new Date().toISOString() });
+          atualizarUltimaAtividade();
         }
       });
 
@@ -5346,6 +5426,7 @@ function AppRoot() {
 
     return () => {
       ativo = false;
+      clearInterval(intervaloAtividade);
       supabaseClient.removeChannel(canalPresenca);
       supabaseClient.removeChannel(canalMensagens);
       supabaseClient.removeChannel(canalNotificacoes);
@@ -5731,7 +5812,7 @@ function AppRoot() {
     <AppContext.Provider value={ctxValue}>
       <ToastProvider>
         <div style={{ display: "flex", minHeight: "100vh" }}>
-          <Sidebar active={active} setActive={setActive} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} itensNav={itensNav} usuarioAtual={usuarioAtual} onLogout={logout} />
+          <Sidebar active={active} setActive={setActive} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} itensNav={itensNav} usuarioAtual={usuarioAtual} onLogout={logout} usuarios={usuarios} usuariosOnlineIds={usuariosOnlineIds} />
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             <Topbar title={navTitle} setMobileOpen={setMobileOpen} usuarioAtual={usuarioAtual} onAbrirChat={() => setChatAberto(true)} totalNaoLidas={totalNaoLidas} />
             <FraseMotivacional compacta />
