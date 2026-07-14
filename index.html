@@ -230,6 +230,11 @@
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes avisoEntra { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes chatPulso {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(192,39,45,0.55); }
+    50% { box-shadow: 0 0 0 8px rgba(192,39,45,0); }
+  }
+  .chat-pulso { animation: chatPulso 1.6s ease-out infinite; }
   .aviso-in { animation: avisoEntra 0.25s ease-out; }
   .fade-in { animation: fadeIn 0.25s ease-out; }
   .slide-in { animation: slideIn 0.2s ease-out; }
@@ -1154,15 +1159,22 @@ function Topbar({ title, setMobileOpen, usuarioAtual, onAbrirChat, totalNaoLidas
         <span style={{ fontSize: 13.5, color: "var(--ink-soft)", fontWeight: 500 }}>{title}</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <button onClick={onAbrirChat} style={{
-          position: "relative", background: "var(--steel-pale)", border: "none", borderRadius: 10,
-          width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
-        }} title="Chat da equipe">
-          <Icon name="message-circle" size={18} color="var(--steel)" />
+        <button
+          onClick={onAbrirChat}
+          className={totalNaoLidas > 0 ? "chat-pulso" : ""}
+          style={{
+            position: "relative", background: "var(--steel)", border: "none", borderRadius: 999,
+            padding: "8px 16px 8px 12px", display: "flex", alignItems: "center", gap: 7, cursor: "pointer", flexShrink: 0,
+          }}
+          title="Chat da equipe"
+        >
+          <Icon name="message-circle" size={17} color="#fff" />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Chat</span>
           {totalNaoLidas > 0 && (
             <span style={{
-              position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, background: "var(--terracotta)",
-              color: "#fff", fontSize: 10.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px",
+              position: "absolute", top: -6, right: -6, minWidth: 20, height: 20, borderRadius: 10, background: "var(--terracotta)",
+              color: "#fff", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px",
+              border: "2px solid var(--paper)",
             }}>{totalNaoLidas > 99 ? "99+" : totalNaoLidas}</span>
           )}
         </button>
@@ -5006,6 +5018,20 @@ function AppRoot() {
     setMensagens([...msgs].reverse());
     setNotificacoes(notifs);
     setUsuarios(perfis);
+
+    // Notificações que chegaram enquanto a pessoa estava offline (ex.: uma
+    // demanda atribuída) também precisam aparecer como aviso — não só as
+    // que chegam "ao vivo" enquanto a tela já está aberta.
+    const pendentes = notifs.filter(n => !n.lida);
+    if (pendentes.length > 0) {
+      setAvisos((prev) => [
+        ...prev,
+        ...pendentes.map(n => ({
+          id: Date.now() + Math.random(),
+          tipo: n.tipo, titulo: n.titulo, mensagem: n.mensagem, notificacaoId: n.id,
+        })),
+      ]);
+    }
   }
 
   // sessão de autenticação Supabase
@@ -5113,7 +5139,7 @@ function AppRoot() {
         if (!ativo) return;
         const nova = payload.new;
         setNotificacoes((prev) => prev.some(n => n.id === nova.id) ? prev : [nova, ...prev]);
-        adicionarAviso({ tipo: nova.tipo, titulo: nova.titulo, mensagem: nova.mensagem });
+        adicionarAviso({ tipo: nova.tipo, titulo: nova.titulo, mensagem: nova.mensagem, notificacaoId: nova.id });
       })
       .subscribe();
 
@@ -5126,7 +5152,12 @@ function AppRoot() {
   }, [usuarioAtual && usuarioAtual.id]);
 
   function fecharAviso(id) {
+    const aviso = avisos.find((a) => a.id === id);
     setAvisos((prev) => prev.filter((a) => a.id !== id));
+    if (aviso && aviso.notificacaoId) {
+      atualizarRegistro("notificacoes", aviso.notificacaoId, { lida: true }).catch((e) => console.error("Não foi possível marcar notificação como lida:", e));
+      setNotificacoes((prev) => prev.map(n => n.id === aviso.notificacaoId ? { ...n, lida: true } : n));
+    }
   }
 
   function clicarAviso(aviso) {
