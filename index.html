@@ -374,13 +374,20 @@ function formatarHora(iso) {
 // Som de notificação — gerado direto no navegador (dois tons curtos, tipo
 // "ding"), sem precisar de nenhum arquivo de áudio.
 let __audioCtxNotificacao = null;
-function tocarSomNotificacao() {
+
+function obterAudioCtxNotificacao() {
+  if (!__audioCtxNotificacao) {
+    __audioCtxNotificacao = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return __audioCtxNotificacao;
+}
+
+async function tocarSomNotificacao() {
   try {
-    if (!__audioCtxNotificacao) {
-      __audioCtxNotificacao = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = obterAudioCtxNotificacao();
+    if (ctx.state === "suspended") {
+      await ctx.resume();
     }
-    const ctx = __audioCtxNotificacao;
-    if (ctx.state === "suspended") ctx.resume();
     const agora = ctx.currentTime;
     [{ freq: 880, inicio: 0, dur: 0.13 }, { freq: 1175, inicio: 0.1, dur: 0.2 }].forEach(({ freq, inicio, dur }) => {
       const osc = ctx.createOscillator();
@@ -4792,23 +4799,37 @@ function AvisosFlutuantes({ avisos, onFechar, onClicar }) {
     }}>
       {avisos.map((a) => {
         const cor = CORES[a.tipo] || CORES.mensagem;
+        const urgente = a.tipo === "demanda_atribuida";
         return (
-          <div key={a.id} className="aviso-in" onClick={() => onClicar && onClicar(a)} style={{
-            background: "var(--paper)", border: "1px solid var(--line)", borderLeft: `4px solid ${cor.fg}`,
-            borderRadius: 10, padding: "12px 14px", boxShadow: "0 10px 28px rgba(0,0,0,0.16)", cursor: onClicar ? "pointer" : "default",
-          }}>
+          <div
+            key={a.id}
+            className={"aviso-in" + (urgente ? " chat-pulso" : "")}
+            onClick={() => onClicar && onClicar(a)}
+            style={{
+              background: urgente ? "var(--paper)" : "var(--paper)",
+              border: urgente ? `2px solid ${cor.fg}` : "1px solid var(--line)",
+              borderLeft: `6px solid ${cor.fg}`,
+              borderRadius: 12, padding: urgente ? "16px 16px" : "12px 14px",
+              boxShadow: urgente ? "0 14px 34px rgba(192,39,45,0.28)" : "0 10px 28px rgba(0,0,0,0.16)",
+              cursor: onClicar ? "pointer" : "default",
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: cor.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Icon name={cor.icon} size={15} color={cor.fg} />
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div style={{
+                  width: urgente ? 40 : 30, height: urgente ? 40 : 30, borderRadius: urgente ? 12 : 8, background: cor.bg,
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  <Icon name={cor.icon} size={urgente ? 20 : 15} color={cor.fg} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>{a.titulo}</div>
-                  {a.mensagem && <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 2 }}>{a.mensagem}</div>}
+                  <div style={{ fontSize: urgente ? 15.5 : 13.5, fontWeight: 800, color: urgente ? cor.fg : "var(--ink)" }}>{a.titulo}</div>
+                  {a.mensagem && <div style={{ fontSize: urgente ? 13 : 12.5, color: "var(--ink-soft)", marginTop: 3 }}>{a.mensagem}</div>}
+                  {urgente && <div style={{ fontSize: 11, color: cor.fg, marginTop: 6, fontWeight: 700 }}>Clique para abrir →</div>}
                 </div>
               </div>
               <button onClick={(e) => { e.stopPropagation(); onFechar(a.id); }} style={{ background: "transparent", border: "none", cursor: "pointer", flexShrink: 0, padding: 2 }}>
-                <Icon name="x" size={14} color="var(--ink-soft)" />
+                <Icon name="x" size={urgente ? 16 : 14} color="var(--ink-soft)" />
               </button>
             </div>
           </div>
@@ -4823,14 +4844,29 @@ function AvisosFlutuantes({ avisos, onFechar, onClicar }) {
 ============================================================ */
 
 function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds, mensagens, naoLidasPorContato, naoLidasTodos, onEnviar, onExcluir, onAbrirConversa, contatoSelecionadoId, setContatoSelecionadoId }) {
+  const toast = useToast();
   const [texto, setTexto] = useState("");
   const [confirmExcluirMsg, setConfirmExcluirMsg] = useState(null);
+  const [excluindoMsg, setExcluindoMsg] = useState(false);
   const scrollRef = useRef(null);
   const canalDigitandoRef = useRef(null);
   const digitandoTimeoutRef = useRef(null);
   const ultimoEnvioDigitandoRef = useRef(0);
   const [quemDigitando, setQuemDigitando] = useState(null);
   const souAdmin = usuarioAtual.role === "admin";
+
+  async function confirmarExclusaoMsg() {
+    if (!confirmExcluirMsg) return;
+    setExcluindoMsg(true);
+    try {
+      await onExcluir(confirmExcluirMsg.id);
+      setConfirmExcluirMsg(null);
+    } catch (e) {
+      toast("Não foi possível apagar: " + e.message, "error");
+    } finally {
+      setExcluindoMsg(false);
+    }
+  }
 
   const contatos = useMemo(() => usuarios.filter(u => u.id !== usuarioAtual.id && u.ativo !== false), [usuarios, usuarioAtual]);
 
@@ -5098,7 +5134,7 @@ function ChatPanel({ aberto, onFechar, usuarios, usuarioAtual, usuariosOnlineIds
             <p style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.5 }}>Apagar esta mensagem? Isso não pode ser desfeito.</p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
               <Button variant="secondary" onClick={() => setConfirmExcluirMsg(null)}>Cancelar</Button>
-              <Button variant="danger" icon="trash-2" onClick={() => { onExcluir(confirmExcluirMsg.id); setConfirmExcluirMsg(null); }}>Apagar</Button>
+              <Button variant="danger" icon="trash-2" disabled={excluindoMsg} onClick={confirmarExclusaoMsg}>{excluindoMsg ? <Spinner size={14} color="#fff" /> : "Apagar"}</Button>
             </div>
           </div>
         )}
@@ -5225,6 +5261,25 @@ function AppRoot() {
     return () => { inscrito = false; listener.subscription.unsubscribe(); };
   }, []);
 
+  // Destrava o som de notificação assim que a pessoa clicar em qualquer
+  // lugar da tela pela primeira vez — os navegadores bloqueiam áudio
+  // automático até haver alguma interação, então isso garante que o som
+  // já esteja liberado quando a primeira notificação de verdade chegar.
+  useEffect(() => {
+    function destravar() {
+      const ctx = obterAudioCtxNotificacao();
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      document.removeEventListener("click", destravar);
+      document.removeEventListener("keydown", destravar);
+    }
+    document.addEventListener("click", destravar);
+    document.addEventListener("keydown", destravar);
+    return () => {
+      document.removeEventListener("click", destravar);
+      document.removeEventListener("keydown", destravar);
+    };
+  }, []);
+
   // Chat em tempo real + presença online + notificações do sistema.
   // Só liga depois que o usuário está logado e o perfil carregado.
   useEffect(() => {
@@ -5332,7 +5387,14 @@ function AppRoot() {
   }
 
   async function excluirMensagem(id) {
-    await excluirRegistro("mensagens", id);
+    // Confirma de verdade que a linha foi apagada (não só assume que deu
+    // certo) — se a política de exclusão não estiver configurada no banco,
+    // o Supabase "apaga 0 linhas" sem erro nenhum, e isso ficaria invisível.
+    const { data, error } = await supabaseClient.from("mensagens").delete().eq("id", id).select();
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('A mensagem não foi apagada. É provável que a permissão de exclusão ainda não tenha sido criada no banco — rode o script "apagar_mensagem_chat.sql" no SQL Editor do Supabase.');
+    }
     setMensagens((prev) => prev.filter(m => m.id !== id));
   }
 
